@@ -1,0 +1,5 @@
+package com.fulfillment.product_service.graphql;
+
+public class ProductQueryResolver {
+
+}
