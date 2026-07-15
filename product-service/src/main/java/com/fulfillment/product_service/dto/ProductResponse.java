@@ -18,4 +18,5 @@ public class ProductResponse {
 	private Boolean productActive;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+	
 }
