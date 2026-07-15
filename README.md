@@ -21,4 +21,4 @@ Production-inspired Order Fulfillment Platform built using:
 - Inventory Service
 - Pricing Service
 - Shipment Service
-- Notification Service
+- Notification Servicepsql -U postgres
