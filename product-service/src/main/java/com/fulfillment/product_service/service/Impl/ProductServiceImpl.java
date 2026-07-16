@@ -54,8 +54,12 @@ public class ProductServiceImpl implements ProductService{
 	@Override
 	public ProductResponse updateProduct(Long id, ProductInput request) {
 		Product product = productRepository.findById(id).orElseThrow(()->new ProductNotFoundException("Product Not Found!!!"));
-		Product uP = mapper.convertToEntity(request);
-		Product updatedProduct = productRepository.save(uP);
+		product.setProductSku(request.getProductSku());
+		product.setProductName(request.getProductName());
+		product.setProductCategory(request.getProductCategory());
+		product.setProductDesc(request.getProductDesc());
+		product.setProductPrice(request.getProductPrice());;
+		Product updatedProduct = productRepository.save(product);
 		return mapper.convertToDto(updatedProduct);
 	}
 
