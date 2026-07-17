@@ -1,0 +1,78 @@
+type Warehouse {
+    wId: ID!
+    wName: String
+    wCode: String
+    wCity: String
+    wState: String
+    wAddress: String
+    wActive: Boolean
+}
+
+type Inventory {
+    inventoryId: ID!
+    productId: ID!
+    warehouseId: ID!
+    warehouseName: String
+    availableQyt: Int
+    reservedQyt: Int
+}
+
+input WarehouseInput {
+    wName: String!
+    wCode: String!
+    wCity: String!
+    wState: String!
+    wAddress: String
+}
+
+input InventoryInput {
+    productId: ID!
+    WarehouseId: ID!
+    availableQyt: Int!
+}
+
+type Query {
+
+    warehouses: [Warehouse]
+
+    warehouseById(
+        warehouseId: ID!
+    ): Warehouse
+
+    inventoryById(
+        inventoryId: ID!
+    ): Inventory
+
+    inventoryByProduct(
+        productId: ID!
+    ): [Inventory]
+}
+
+type Mutation {
+
+    createWarehouse(
+        warehouse: WarehouseInput!
+    ): Warehouse
+
+    updateWarehouse(
+        warehouseId: ID!,
+        warehouse: WarehouseInput!
+    ): Warehouse
+
+    deleteWarehouse(
+        warehouseId: ID!
+    ): Boolean
+
+    createInventory(
+        inventory: InventoryInput!
+    ): Inventory
+
+    updateInventory(
+        inventoryId: ID!,
+        inventory: InventoryInput!
+    ): Inventory
+
+    deleteInventory(
+        inventoryId: ID!
+    ): Boolean
+}

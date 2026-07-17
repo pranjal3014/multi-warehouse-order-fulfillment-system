@@ -1,0 +1,90 @@
+enum Role {
+    CUSTOMER
+    WAREHOUSE_MANAGER
+    ADMIN
+}
+
+enum UserStatus {
+    ACTIVE
+    PENDING
+    REJECTED
+    INACTIVE
+}
+
+type User {
+
+    userId: ID!
+    userName: String
+    userEmail: String
+    userContact: String
+
+    role: Role
+    userStatus: UserStatus
+
+    warehouseId: ID
+
+    createdAt: String
+    updatedAt: String
+}
+
+input UserRegistrationInput {
+
+    userName: String!
+    userEmail: String!
+    userContact: String!
+    userPassword: String!
+}
+
+input WarehouseManagerApplicationInput {
+
+    userName: String!
+    userEmail: String!
+    userContact: String!
+    userPassword: String!
+}
+
+input UserUpdateInput {
+
+    userName: String!
+    userContact: String!
+}
+
+type Query {
+
+    users: [User]
+
+    userById(
+        userId: ID!
+    ): User
+
+    pendingWarehouseManagers: [User]
+}
+
+type Mutation {
+
+    registerCustomer(
+        user: UserRegistrationInput!
+    ): User
+
+    applyWarehouseManager(
+        user: WarehouseManagerApplicationInput!
+    ): User
+
+    updateUser(
+        userId: ID!,
+        user: UserUpdateInput!
+    ): User
+
+    deleteUser(
+        userId: ID!
+    ): Boolean
+
+    approveWarehouseManager(
+        userId: ID!,
+        warehouseId: ID!
+    ): User
+
+    rejectWarehouseManager(
+        userId: ID!
+    ): User
+}
