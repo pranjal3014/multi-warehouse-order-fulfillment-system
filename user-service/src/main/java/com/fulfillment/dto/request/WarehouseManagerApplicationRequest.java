@@ -1,5 +1,11 @@
 package com.fulfillment.dto.request;
 
-public class WarehouseManagerApplicationRequest {
+import lombok.Data;
 
+@Data
+public class WarehouseManagerApplicationRequest {
+	private String userName;
+	private String userEmail;
+	private String userContact;
+	private String userPassword;
 }
