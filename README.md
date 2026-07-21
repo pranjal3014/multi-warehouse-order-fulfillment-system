@@ -16,6 +16,7 @@ Production-inspired Order Fulfillment Platform built using:
 
 - API Gateway
 - Product Service
+- User Service
 - Cart Service
 - Order Service
 - Inventory Service
