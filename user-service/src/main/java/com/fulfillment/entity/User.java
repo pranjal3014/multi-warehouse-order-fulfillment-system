@@ -22,41 +22,41 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name="users")
+@Table(name = "users")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 public class User {
-	
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long userId;
-	
-	@Column(name="user_name")
+
+	@Column(name = "user_name")
 	private String userName;
-	
-	@Column(name="user_email")
+
+	@Column(name = "user_email")
 	private String userEmail;
-	
-	@Column(name="user_contact")
+
+	@Column(name = "user_contact")
 	private String userContact;
-	
-	@Column(name="user_password")
+
+	@Column(name = "user_password")
 	private String userPassword;
-	
+
 	@Enumerated(EnumType.STRING)
 	private Role role;
-	
+
 	@Enumerated(EnumType.STRING)
-	private UserStatus userStatus; //for warehouse manager only
-	
-	@Column(name="warehouse_id")
+	private UserStatus userStatus; // for warehouse manager only
+
+	@Column(name = "warehouse_id")
 	private Long warehouseId;
-	
+
 	@CreationTimestamp
 	private LocalDateTime createdAt;
-	
+
 	@UpdateTimestamp
 	private LocalDateTime updatedAt;
 }

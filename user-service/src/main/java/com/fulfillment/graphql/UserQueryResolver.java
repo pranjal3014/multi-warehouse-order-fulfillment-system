@@ -15,20 +15,20 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserQueryResolver {
 
-    private final UserService userService;
+	private final UserService userService;
 
-    @QueryMapping
-    public List<UserResponse> users() {
-        return userService.getAllUsers();
-    }
+	@QueryMapping
+	public List<UserResponse> users() {
+		return userService.getAllUsers();
+	}
 
-    @QueryMapping
-    public UserResponse userById(@Argument Long userId) {
-        return userService.getUserById(userId);
-    }
+	@QueryMapping
+	public UserResponse userById(@Argument Long userId) {
+		return userService.getUserById(userId);
+	}
 
-    @QueryMapping
-    public List<UserResponse> pendingWarehouseManagers() {
-        return userService.getPendingWarehouseManagers();
-    }
+	@QueryMapping
+	public List<UserResponse> pendingWarehouseManagers() {
+		return userService.getPendingWarehouseManagers();
+	}
 }

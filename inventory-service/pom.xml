@@ -6,30 +6,19 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.fulfillment</groupId>
 	<artifactId>inventory-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>inventory-service</name>
+	<description>Inventory microservice with gRPC support</description>
+
 	<properties>
 		<java.version>21</java.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -51,16 +40,22 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
 		</dependency>
-		 <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-graphql</artifactId>
-    </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-graphql</artifactId>
+		</dependency>
+		
+		<!-- gRPC (native Spring Boot 4.1 support) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-grpc-server</artifactId>
+		</dependency>
+		<!-- Optional: enables server reflection + health service for grpcurl/health checks -->
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-services</artifactId>
+		</dependency>
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-graphql-test</artifactId>
-      <scope>test</scope>
-    </dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
@@ -70,6 +65,29 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+		<!-- gRPC Client (native Spring Boot 4.1 support) -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-grpc-client</artifactId>
+		</dependency>
+		
+		<!-- Optional: for testing gRPC client calls -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-grpc-client-test</artifactId>
+		    <scope>test</scope>
+		</dependency>
+		<!-- Test dependencies -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-grpc-server-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-graphql-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -92,6 +110,7 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -153,6 +172,19 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<!--
+				Generates Java classes from .proto files (place them in src/main/proto).
+				spring-boot-starter-parent 4.1.0 manages the protoc version and
+				grpc-java plugin, so no extra <configuration> is needed here.
+			-->
+			<plugin>
+				<groupId>io.github.ascopes</groupId>
+				<artifactId>protobuf-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+			    <groupId>io.github.ascopes</groupId>
+			    <artifactId>protobuf-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
