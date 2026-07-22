@@ -11,8 +11,10 @@ import com.fulfillment.entity.CartItem;
 import com.fulfillment.exception.CartItemNotFoundException;
 import com.fulfillment.exception.CartNotFoundException;
 import com.fulfillment.grpc.client.InventoryGrpcClient;
+import com.fulfillment.grpc.client.PricingGrpcClient;
 import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.mapper.CartMapper;
+import com.fulfillment.pricing.grpc.PriceResponse;
 import com.fulfillment.repository.CartItemRepository;
 import com.fulfillment.repository.CartRepository;
 import com.fulfillment.service.CartService;
@@ -28,15 +30,23 @@ public class CartServiceImpl implements CartService {
 	private final CartItemRepository cartItemRepository;
 	private final InventoryGrpcClient inventoryGrpcClient;
 	private final CartMapper cartMapper;
+	 private final PricingGrpcClient pricingGrpcClient;
 
 	@Override
 	public CartResponse addToCart(AddToCartRequest request) {
 
-		Cart cart = cartRepository.findByUserId(request.getUserId()).orElseGet(() -> {
+		// Call grpc chk fst
+		InventoryListResponse inventoryResponse = inventoryGrpcClient.checkInventory(request.getProductId());
 
+		// Call pricing s for chk
+		PriceResponse priceResponse = pricingGrpcClient.getPriceByProductId(request.getProductId());
+
+		System.out.println("Inventory Response : " + inventoryResponse);
+		System.out.println("Pricing Response : " + priceResponse);
+
+		Cart cart = cartRepository.findByUserId(request.getUserId()).orElseGet(() -> {
 			Cart newCart = Cart.builder().userId(request.getUserId()).build();
-			InventoryListResponse response =
-			        inventoryGrpcClient.checkInventory(request.getProductId());
+
 			return cartRepository.save(newCart);
 		});
 
@@ -81,8 +91,7 @@ public class CartServiceImpl implements CartService {
 				.orElseThrow(() -> new CartItemNotFoundException("Cart Item not found with Id : " + cartItemId));
 
 		cartItem.setQuantity(request.getQuantity());
-		InventoryListResponse response =
-		        inventoryGrpcClient.checkInventory(cartItem.getProductId());
+		InventoryListResponse response = inventoryGrpcClient.checkInventory(cartItem.getProductId());
 		cartItemRepository.save(cartItem);
 
 		return cartMapper.mapToCartResponse(cartItem.getCart());

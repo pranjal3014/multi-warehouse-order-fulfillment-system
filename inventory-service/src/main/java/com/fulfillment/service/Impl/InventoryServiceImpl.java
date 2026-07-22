@@ -3,6 +3,7 @@ package com.fulfillment.service.Impl;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fulfillment.dto.request.InventoryRequest;
 import com.fulfillment.dto.response.InventoryResponse;
@@ -47,6 +48,7 @@ public class InventoryServiceImpl implements InventoryService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public List<InventoryResponse> getInventoryByProduct(Long productId) {
 		return inventoryRepository
                 .findByProductId(productId)

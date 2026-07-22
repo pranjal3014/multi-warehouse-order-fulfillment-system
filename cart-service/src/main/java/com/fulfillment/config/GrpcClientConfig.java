@@ -18,4 +18,12 @@ public class GrpcClientConfig {
                 .build();
     }
 
+    @Bean
+    public ManagedChannel pricingManagedChannel() {
+
+        return ManagedChannelBuilder
+                .forAddress("localhost", 9091) //Pricing Service gRPC Port
+                .usePlaintext()
+                .build();
+    }
 }

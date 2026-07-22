@@ -20,12 +20,12 @@ import lombok.RequiredArgsConstructor;
 public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceImplBase {
 
     private final InventoryService inventoryService;
-
+    
     @Override
     public void checkInventory(
             InventoryRequest request,
             StreamObserver<InventoryListResponse> responseObserver) {
-
+    	try {
         List<InventoryResponse> inventories =
                 inventoryService.getInventoryByProduct(request.getProductId());
 
@@ -55,5 +55,14 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
 
         responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
+    	}catch (Exception e) {
+            e.printStackTrace();
+            responseObserver.onError(
+                io.grpc.Status.INTERNAL
+                    .withDescription(e.getMessage())
+                    .asRuntimeException()
+            );
+            return;
+        }
     }
 }
