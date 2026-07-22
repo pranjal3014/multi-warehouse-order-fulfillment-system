@@ -44,7 +44,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-graphql</artifactId>
 		</dependency>
-
+		
 		<!-- gRPC (native Spring Boot 4.1 support) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -66,7 +66,18 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-
+		<!-- gRPC Client (native Spring Boot 4.1 support) -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-grpc-client</artifactId>
+		</dependency>
+		
+		<!-- Optional: for testing gRPC client calls -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-grpc-client-test</artifactId>
+		    <scope>test</scope>
+		</dependency>
 		<!-- Test dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -162,7 +173,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 			<!--
 				Generates Java classes from .proto files (place them in src/main/proto).
 				spring-boot-starter-parent 4.1.0 manages the protoc version and
@@ -171,6 +181,10 @@
 			<plugin>
 				<groupId>io.github.ascopes</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+			    <groupId>io.github.ascopes</groupId>
+			    <artifactId>protobuf-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>

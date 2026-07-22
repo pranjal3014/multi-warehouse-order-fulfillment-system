@@ -10,6 +10,8 @@ import com.fulfillment.entity.Cart;
 import com.fulfillment.entity.CartItem;
 import com.fulfillment.exception.CartItemNotFoundException;
 import com.fulfillment.exception.CartNotFoundException;
+import com.fulfillment.grpc.client.InventoryGrpcClient;
+import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.mapper.CartMapper;
 import com.fulfillment.repository.CartItemRepository;
 import com.fulfillment.repository.CartRepository;
@@ -24,7 +26,7 @@ public class CartServiceImpl implements CartService {
 	private final CartRepository cartRepository;
 
 	private final CartItemRepository cartItemRepository;
-
+	private final InventoryGrpcClient inventoryGrpcClient;
 	private final CartMapper cartMapper;
 
 	@Override
@@ -33,7 +35,8 @@ public class CartServiceImpl implements CartService {
 		Cart cart = cartRepository.findByUserId(request.getUserId()).orElseGet(() -> {
 
 			Cart newCart = Cart.builder().userId(request.getUserId()).build();
-
+			InventoryListResponse response =
+			        inventoryGrpcClient.checkInventory(request.getProductId());
 			return cartRepository.save(newCart);
 		});
 
@@ -78,7 +81,8 @@ public class CartServiceImpl implements CartService {
 				.orElseThrow(() -> new CartItemNotFoundException("Cart Item not found with Id : " + cartItemId));
 
 		cartItem.setQuantity(request.getQuantity());
-
+		InventoryListResponse response =
+		        inventoryGrpcClient.checkInventory(cartItem.getProductId());
 		cartItemRepository.save(cartItem);
 
 		return cartMapper.mapToCartResponse(cartItem.getCart());
