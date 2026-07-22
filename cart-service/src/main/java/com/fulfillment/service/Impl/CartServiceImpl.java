@@ -1,7 +1,9 @@
 package com.fulfillment.service.Impl;
 
 import java.util.Optional;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fulfillment.dto.request.AddToCartRequest;
 import com.fulfillment.dto.request.UpdateCartRequest;
@@ -18,8 +20,6 @@ import com.fulfillment.pricing.grpc.PriceResponse;
 import com.fulfillment.repository.CartItemRepository;
 import com.fulfillment.repository.CartRepository;
 import com.fulfillment.service.CartService;
-
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -75,7 +75,7 @@ public class CartServiceImpl implements CartService {
 	}
 
 	@Override
-	@Transactional
+	@Transactional(readOnly = true )
 	public CartResponse getCart(Long userId) {
 
 		Cart cart = cartRepository.findByUserId(userId)
@@ -109,14 +109,28 @@ public class CartServiceImpl implements CartService {
 	}
 
 	@Override
+	@Transactional
 	public Boolean clearCart(Long userId) {
 
-		Cart cart = cartRepository.findByUserId(userId)
-				.orElseThrow(() -> new CartNotFoundException("Cart not found for User Id : " + userId));
+	    Cart cart = cartRepository.findByUserId(userId)
+	            .orElseThrow(() ->
+	                    new CartNotFoundException("Cart not found"));
 
-		cartItemRepository.deleteByCartCartId(cart.getCartId());
+	    cartItemRepository.deleteAll(cart.getCartItems());
 
-		return true;
+	    cart.getCartItems().clear();
+
+	    return true;
+	}
+	@Override
+	@Transactional(readOnly = true)
+	public CartResponse getCartByUserId(Long userId) {
+
+	    Cart cart = cartRepository.findByUserId(userId)
+	            .orElseThrow(() ->
+	                    new CartNotFoundException("Cart not found"));
+
+	    return cartMapper.mapToCartResponse(cart);
 	}
 
 }

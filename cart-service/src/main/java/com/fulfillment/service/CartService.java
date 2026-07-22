@@ -16,4 +16,6 @@ public interface CartService {
 
     Boolean clearCart(Long userId);
 
+    CartResponse getCartByUserId(Long userId);
+
 }

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package pricing;
+
+option java_package = "com.fulfillment.pricing.grpc";
+option java_multiple_files = true;
+
+service PricingService {
+
+  rpc GetPriceByProductId (PriceRequest) returns (PriceResponse);
+
+}
+
+message PriceRequest {
+
+  int64 productId = 1;
+
+}
+
+message PriceResponse {
+
+  int64 productId = 1;
+
+  double basePrice = 2;
+
+  double discountPercentage = 3;
+
+  double taxPercentage = 4;
+
+  double finalPrice = 5;
+
+}
