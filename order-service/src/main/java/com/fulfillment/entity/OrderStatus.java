@@ -1,5 +1,12 @@
 package com.fulfillment.entity;
 
-public class OrderStatus {
+public enum OrderStatus {
+
+    PENDING,
+    CONFIRMED,
+    ALLOCATED,
+    SHIPPED,
+    DELIVERED,
+    CANCELLED
 
 }

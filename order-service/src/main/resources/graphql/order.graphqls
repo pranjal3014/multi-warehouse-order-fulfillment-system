@@ -49,6 +49,8 @@ type Query {
     ordersByUser(
         userId: ID!
     ): [Order]
+    
+    orderByStatus(status: String!): [Order!]!
 }
 
 type Mutation {

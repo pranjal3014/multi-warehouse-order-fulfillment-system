@@ -1,5 +1,9 @@
 package com.fulfillment.exception;
 
-public class OrderNotFoundException {
+public class OrderNotFoundException extends RuntimeException{
+
+	public OrderNotFoundException(String msg) {
+		super(msg);
+	}
 
 }

@@ -1,5 +1,10 @@
 package com.fulfillment.entity;
 
-public class PaymentStatus {
+public enum PaymentStatus {
 
-}
+    PENDING,
+    SUCCESS,
+    FAILED,
+    REFUNDED
+
+}	
