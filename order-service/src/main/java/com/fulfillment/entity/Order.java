@@ -46,6 +46,10 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
 
+    private Long paymentId;
+
+    private String transactionId;
+    
     @Builder.Default
     @OneToMany(mappedBy = "order",
             cascade = CascadeType.ALL,

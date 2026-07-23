@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fulfillment.cart.grpc.CartItem;
 import com.fulfillment.cart.grpc.CartResponse;
+import com.fulfillment.dto.payment.PaymentRequest;
+import com.fulfillment.dto.payment.PaymentResponse;
 import com.fulfillment.dto.request.CancelOrderRequest;
 import com.fulfillment.dto.request.PlaceOrderRequest;
 import com.fulfillment.dto.response.OrderProcessingResult;
@@ -18,8 +20,10 @@ import com.fulfillment.entity.OrderItem;
 import com.fulfillment.entity.OrderStatus;
 import com.fulfillment.entity.PaymentStatus;
 import com.fulfillment.exception.OrderNotFoundException;
+import com.fulfillment.exception.PaymentFailedException;
 import com.fulfillment.grpc.client.CartGrpcClient;
 import com.fulfillment.grpc.client.InventoryGrpcClient;
+import com.fulfillment.grpc.client.PaymentClient;
 import com.fulfillment.grpc.client.PricingGrpcClient;
 import com.fulfillment.inventory.grpc.InventoryItem;
 import com.fulfillment.inventory.grpc.InventoryListResponse;
@@ -42,7 +46,7 @@ public class OrderServiceImpl implements OrderService {
 	private final CartGrpcClient cartGrpcClient;
 
 	private final InventoryGrpcClient inventoryGrpcClient;
-
+	private final PaymentClient paymentClient;
 	private final PricingGrpcClient pricingGrpcClient;
 
 	@Override
@@ -64,10 +68,37 @@ public class OrderServiceImpl implements OrderService {
 	    // 5. Save Order
 	    Order savedOrder = orderRepository.save(order);
 
-	    // 6. Clear Cart
+	    // 6. Make Payment
+	    PaymentRequest paymentRequest = PaymentRequest.builder()
+	            .orderId(savedOrder.getOrderId())
+	            .userId(savedOrder.getUserId())
+	            .amount(savedOrder.getTotalAmount())
+	            .build();
+
+	    PaymentResponse paymentResponse = paymentClient.makePayment(paymentRequest);
+
+	    PaymentStatus status = paymentResponse.getPaymentStatus();
+
+	    if (status != PaymentStatus.SUCCESS) {
+
+	        savedOrder.setPaymentStatus(status);
+	        savedOrder.setOrderStatus(OrderStatus.CANCELLED);
+	        orderRepository.save(savedOrder);
+
+	        throw new PaymentFailedException("Payment failed.");
+	    }
+
+	    savedOrder.setPaymentId(paymentResponse.getPaymentId());
+	    savedOrder.setTransactionId(paymentResponse.getTransactionId());
+	    savedOrder.setPaymentStatus(status);
+	    savedOrder.setOrderStatus(OrderStatus.CONFIRMED);
+
+	    orderRepository.save(savedOrder);
+
+	    // 9. Clear Cart
 	    cartGrpcClient.clearCart(request.getUserId());
 
-	    // 7. Return Response
+	    // 10. Return Response
 	    return orderMapper.toOrderResponse(savedOrder);
 	}
 
