@@ -10,7 +10,7 @@ public interface OrderService {
 
     OrderResponse placeOrder(PlaceOrderRequest request);
 
-    Boolean cancelOrder(CancelOrderRequest request);
+    OrderResponse cancelOrder(CancelOrderRequest request);
 
     List<OrderResponse> getOrders();
 

@@ -13,6 +13,7 @@ import com.fulfillment.dto.payment.PaymentRequest;
 import com.fulfillment.dto.payment.PaymentResponse;
 import com.fulfillment.dto.request.CancelOrderRequest;
 import com.fulfillment.dto.request.PlaceOrderRequest;
+import com.fulfillment.dto.request.RefundRequest;
 import com.fulfillment.dto.response.OrderProcessingResult;
 import com.fulfillment.dto.response.OrderResponse;
 import com.fulfillment.entity.Order;
@@ -103,20 +104,44 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
-	public Boolean cancelOrder(CancelOrderRequest request) {
+	@Transactional
+	public OrderResponse cancelOrder(CancelOrderRequest request) {
 
-		Order order = orderRepository.findById(request.getOrderId())
-				.orElseThrow(() -> new OrderNotFoundException("Order not found with id : " + request.getOrderId()));
+	    // 1. Find Order
+	    Order order = orderRepository.findById(request.getOrderId())
+	            .orElseThrow(() -> new OrderNotFoundException("Order not found."));
 
-		if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-			throw new RuntimeException("Order is already cancelled.");
-		}
+	    // 2. Validate Order Status
+	    if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+	        throw new RuntimeException("Order is already cancelled.");
+	    }
 
-		order.setOrderStatus(OrderStatus.CANCELLED);
+	    // 3. Refund Payment
+	    RefundRequest refundRequest = RefundRequest.builder()
+	            .orderId(order.getOrderId())
+	            .build();
 
-		orderRepository.save(order);
+	    PaymentResponse paymentResponse = paymentClient.refundPayment(refundRequest);
 
-		return true;
+	    if (paymentResponse.getPaymentStatus() != PaymentStatus.REFUNDED) {
+	        throw new PaymentFailedException("Refund failed.");
+	    }
+
+	    // 4. Update Order
+	    order.setPaymentStatus(PaymentStatus.REFUNDED);
+	    order.setOrderStatus(OrderStatus.CANCELLED);
+
+	    // Optional
+	    order.setTransactionId(paymentResponse.getTransactionId());
+
+	    Order updatedOrder = orderRepository.save(order);
+
+	    // 5. TODO: Release Inventory (Inventory Service)
+	    // inventoryGrpcClient.releaseInventory(order.getOrderItems());
+
+	    // 6. TODO: Publish Order Cancelled Event (Kafka)
+
+	    return orderMapper.toOrderResponse(updatedOrder);
 	}
 
 	@Override
