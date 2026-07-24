@@ -31,6 +31,8 @@ type OrderItem {
 input PlaceOrderRequest {
 
     userId: ID!
+
+    paymentMethod: PaymentMethod!
 }
 
 input CancelOrderRequest {
@@ -62,4 +64,14 @@ type Mutation {
     cancelOrder(
         request: CancelOrderRequest!
     ): Boolean
+}
+
+enum PaymentMethod {
+
+    UPI
+    CARD
+    NET_BANKING
+    WALLET
+    COD
+
 }

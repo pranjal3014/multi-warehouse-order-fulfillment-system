@@ -19,7 +19,7 @@ type User {
     userContact: String
 
     role: Role
-    userStatus: UserStatus
+    userStatus: UserStatus 
 
     warehouseId: ID
 

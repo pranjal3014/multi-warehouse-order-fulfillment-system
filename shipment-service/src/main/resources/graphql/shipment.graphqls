@@ -1,0 +1,66 @@
+type Query {
+
+    shipmentById(shipmentId: ID!): ShipmentResponse
+
+    shipmentByTrackingNumber(trackingNumber: String!): ShipmentResponse
+
+    shipmentsByOrderId(orderId: ID!): [ShipmentResponse!]!
+
+    shipments: [ShipmentResponse!]!
+
+}
+
+type Mutation {
+
+    createShipment(createShipmentRequest: CreateShipmentRequest!): ShipmentResponse
+
+    updateShipmentStatus(updateShipmentStatusRequest: UpdateShipmentStatusRequest!): ShipmentResponse
+
+}
+
+input CreateShipmentRequest {
+
+    orderId: ID!
+
+    userId: ID!
+
+    warehouseId: ID!
+
+}
+
+input UpdateShipmentStatusRequest {
+
+    shipmentId: ID!
+
+    shipmentStatus: ShipmentStatus!
+
+}
+
+type ShipmentResponse {
+
+    shipmentId: ID
+
+    orderId: ID
+
+    userId: ID
+
+    warehouseId: ID
+
+    trackingNumber: String
+
+    shipmentStatus: ShipmentStatus
+
+    createdAt: String
+
+    updatedAt: String
+
+}
+
+enum ShipmentStatus {
+
+    ALLOCATED
+    SHIPPED
+    IN_TRANSIT
+    DELIVERED
+
+}

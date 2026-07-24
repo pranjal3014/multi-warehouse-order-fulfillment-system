@@ -27,7 +27,7 @@ public class OrderResolver {
 
     @MutationMapping
     public Boolean cancelOrder(@Argument CancelOrderRequest request) {
-        return orderService.cancelOrder(request);
+        return orderService.cancelOrder(request) != null;
     }
 
     @QueryMapping

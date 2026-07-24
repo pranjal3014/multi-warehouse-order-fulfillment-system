@@ -1,0 +1,76 @@
+type Query {
+
+    paymentById(paymentId: ID!): PaymentResponse
+
+    paymentByOrderId(orderId: ID!): PaymentResponse
+
+    payments: [PaymentResponse!]!
+
+}
+
+type Mutation {
+
+    makePayment(paymentRequest: PaymentRequest!): PaymentResponse
+
+    refundPayment(refundRequest: RefundRequest!): PaymentResponse
+
+}
+
+input PaymentRequest {
+
+    orderId: ID!
+
+    userId: ID!
+
+    amount: Float!
+
+    paymentMethod: PaymentMethod!
+
+}
+
+input RefundRequest {
+
+    paymentId: ID!
+
+}
+
+type PaymentResponse {
+
+    paymentId: ID
+
+    orderId: ID
+
+    userId: ID
+
+    amount: Float
+
+    paymentMethod: PaymentMethod
+
+    paymentStatus: PaymentStatus
+
+    transactionId: String
+
+    createdAt: String
+
+    updatedAt: String
+
+}
+
+enum PaymentStatus {
+
+    PENDING
+    PAID
+    FAILED
+    REFUNDED
+
+}
+
+enum PaymentMethod {
+
+    UPI
+    CARD
+    NET_BANKING
+    WALLET
+    COD
+
+}

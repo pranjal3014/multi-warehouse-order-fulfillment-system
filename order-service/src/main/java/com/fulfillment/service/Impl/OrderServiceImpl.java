@@ -9,8 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fulfillment.cart.grpc.CartItem;
 import com.fulfillment.cart.grpc.CartResponse;
+import com.fulfillment.dto.payment.PaymentRequest;
+import com.fulfillment.dto.payment.PaymentResponse;
 import com.fulfillment.dto.request.CancelOrderRequest;
 import com.fulfillment.dto.request.PlaceOrderRequest;
+import com.fulfillment.dto.request.RefundRequest;
 import com.fulfillment.dto.response.OrderProcessingResult;
 import com.fulfillment.dto.response.OrderResponse;
 import com.fulfillment.entity.Order;
@@ -18,9 +21,13 @@ import com.fulfillment.entity.OrderItem;
 import com.fulfillment.entity.OrderStatus;
 import com.fulfillment.entity.PaymentStatus;
 import com.fulfillment.exception.OrderNotFoundException;
+import com.fulfillment.exception.PaymentFailedException;
 import com.fulfillment.grpc.client.CartGrpcClient;
 import com.fulfillment.grpc.client.InventoryGrpcClient;
+import com.fulfillment.grpc.client.PaymentClient;
 import com.fulfillment.grpc.client.PricingGrpcClient;
+import com.fulfillment.grpc.client.ShipmentClient;
+import com.fulfillment.kafka.OrderEventProducer;
 import com.fulfillment.inventory.grpc.InventoryItem;
 import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.mapper.OrderMapper;
@@ -42,8 +49,10 @@ public class OrderServiceImpl implements OrderService {
 	private final CartGrpcClient cartGrpcClient;
 
 	private final InventoryGrpcClient inventoryGrpcClient;
-
+	private final PaymentClient paymentClient;
 	private final PricingGrpcClient pricingGrpcClient;
+	private final ShipmentClient shipmentClient;
+	private final OrderEventProducer orderEventProducer;
 
 	@Override
 	public OrderResponse placeOrder(PlaceOrderRequest request) {
@@ -64,28 +73,85 @@ public class OrderServiceImpl implements OrderService {
 	    // 5. Save Order
 	    Order savedOrder = orderRepository.save(order);
 
-	    // 6. Clear Cart
+	    // 6. Make Payment
+	    PaymentRequest paymentRequest = PaymentRequest.builder()
+	            .orderId(savedOrder.getOrderId())
+	            .userId(savedOrder.getUserId())
+	            .amount(savedOrder.getTotalAmount())
+	            .paymentMethod(request.getPaymentMethod())
+	            .build();
+
+	    PaymentResponse paymentResponse = paymentClient.makePayment(paymentRequest);
+
+	    PaymentStatus status = paymentResponse.getPaymentStatus();
+
+	    if (status != PaymentStatus.PAID) {
+
+	        savedOrder.setPaymentStatus(status);
+	        savedOrder.setOrderStatus(OrderStatus.CANCELLED);
+	        orderRepository.save(savedOrder);
+
+	        throw new PaymentFailedException("Payment failed.");
+	    }
+
+	    savedOrder.setPaymentId(paymentResponse.getPaymentId());
+	    savedOrder.setTransactionId(paymentResponse.getTransactionId());
+	    savedOrder.setPaymentStatus(status);
+	    savedOrder.setOrderStatus(OrderStatus.CONFIRMED);
+
+	    orderRepository.save(savedOrder);
+
+	    orderEventProducer.publishOrderPlacedEvent(savedOrder);
+
+	    // 9. Create Shipment
+	    createShipments(savedOrder);
+
+	    // 10. Clear Cart
 	    cartGrpcClient.clearCart(request.getUserId());
 
-	    // 7. Return Response
+	    // 11. Return Response
 	    return orderMapper.toOrderResponse(savedOrder);
 	}
 
 	@Override
-	public Boolean cancelOrder(CancelOrderRequest request) {
+	@Transactional
+	public OrderResponse cancelOrder(CancelOrderRequest request) {
 
-		Order order = orderRepository.findById(request.getOrderId())
-				.orElseThrow(() -> new OrderNotFoundException("Order not found with id : " + request.getOrderId()));
+	    // 1. Find Order
+	    Order order = orderRepository.findById(request.getOrderId())
+	            .orElseThrow(() -> new OrderNotFoundException("Order not found."));
 
-		if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-			throw new RuntimeException("Order is already cancelled.");
-		}
+	    // 2. Validate Order Status
+	    if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+	        throw new RuntimeException("Order is already cancelled.");
+	    }
 
-		order.setOrderStatus(OrderStatus.CANCELLED);
+	    // 3. Refund Payment
+	    RefundRequest refundRequest = RefundRequest.builder()
+	            .paymentId(order.getPaymentId())
+	            .build();
 
-		orderRepository.save(order);
+	    PaymentResponse paymentResponse = paymentClient.refundPayment(refundRequest);
 
-		return true;
+	    if (paymentResponse.getPaymentStatus() != PaymentStatus.REFUNDED) {
+	        throw new PaymentFailedException("Refund failed.");
+	    }
+
+	    // 4. Update Order
+	    order.setPaymentStatus(PaymentStatus.REFUNDED);
+	    order.setOrderStatus(OrderStatus.CANCELLED);
+
+	    // Optional
+	    order.setTransactionId(paymentResponse.getTransactionId());
+
+	    Order updatedOrder = orderRepository.save(order);
+
+	    // 5. TODO: Release Inventory (Inventory Service)
+	    // inventoryGrpcClient.releaseInventory(order.getOrderItems());
+
+	    // 6. TODO: Publish Order Cancelled Event (Kafka)
+
+	    return orderMapper.toOrderResponse(updatedOrder);
 	}
 
 	@Override
@@ -127,6 +193,15 @@ public class OrderServiceImpl implements OrderService {
 
 		return Order.builder().userId(userId).orderStatus(OrderStatus.PENDING).paymentStatus(PaymentStatus.PENDING)
 				.build();
+	}
+
+	private void createShipments(Order order) {
+
+		order.getOrderItems().stream()
+				.map(OrderItem::getWarehouseId)
+				.distinct()
+				.forEach(warehouseId -> shipmentClient.createShipment(
+						order.getOrderId(), order.getUserId(), warehouseId));
 	}
 
 	private OrderProcessingResult processCartItems(CartResponse cartResponse, Order order) {
