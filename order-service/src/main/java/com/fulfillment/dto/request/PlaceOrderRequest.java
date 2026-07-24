@@ -7,4 +7,6 @@ public class PlaceOrderRequest {
 
     private Long userId;
 
+    private String paymentMethod;
+
 }

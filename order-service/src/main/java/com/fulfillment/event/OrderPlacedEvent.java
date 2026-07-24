@@ -1,4 +1,5 @@
-package com.fulfillment.dto.request;
+package com.fulfillment.event;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,8 +9,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RefundRequest {
+public class OrderPlacedEvent {
 
-    private Long paymentId;
+    private String eventType;
+
+    private Long orderId;
+
+    private Long userId;
 
 }

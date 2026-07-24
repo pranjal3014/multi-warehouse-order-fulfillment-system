@@ -26,6 +26,8 @@ import com.fulfillment.grpc.client.CartGrpcClient;
 import com.fulfillment.grpc.client.InventoryGrpcClient;
 import com.fulfillment.grpc.client.PaymentClient;
 import com.fulfillment.grpc.client.PricingGrpcClient;
+import com.fulfillment.grpc.client.ShipmentClient;
+import com.fulfillment.kafka.OrderEventProducer;
 import com.fulfillment.inventory.grpc.InventoryItem;
 import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.mapper.OrderMapper;
@@ -49,6 +51,8 @@ public class OrderServiceImpl implements OrderService {
 	private final InventoryGrpcClient inventoryGrpcClient;
 	private final PaymentClient paymentClient;
 	private final PricingGrpcClient pricingGrpcClient;
+	private final ShipmentClient shipmentClient;
+	private final OrderEventProducer orderEventProducer;
 
 	@Override
 	public OrderResponse placeOrder(PlaceOrderRequest request) {
@@ -74,13 +78,14 @@ public class OrderServiceImpl implements OrderService {
 	            .orderId(savedOrder.getOrderId())
 	            .userId(savedOrder.getUserId())
 	            .amount(savedOrder.getTotalAmount())
+	            .paymentMethod(request.getPaymentMethod())
 	            .build();
 
 	    PaymentResponse paymentResponse = paymentClient.makePayment(paymentRequest);
 
 	    PaymentStatus status = paymentResponse.getPaymentStatus();
 
-	    if (status != PaymentStatus.SUCCESS) {
+	    if (status != PaymentStatus.PAID) {
 
 	        savedOrder.setPaymentStatus(status);
 	        savedOrder.setOrderStatus(OrderStatus.CANCELLED);
@@ -96,10 +101,15 @@ public class OrderServiceImpl implements OrderService {
 
 	    orderRepository.save(savedOrder);
 
-	    // 9. Clear Cart
+	    orderEventProducer.publishOrderPlacedEvent(savedOrder);
+
+	    // 9. Create Shipment
+	    createShipments(savedOrder);
+
+	    // 10. Clear Cart
 	    cartGrpcClient.clearCart(request.getUserId());
 
-	    // 10. Return Response
+	    // 11. Return Response
 	    return orderMapper.toOrderResponse(savedOrder);
 	}
 
@@ -118,7 +128,7 @@ public class OrderServiceImpl implements OrderService {
 
 	    // 3. Refund Payment
 	    RefundRequest refundRequest = RefundRequest.builder()
-	            .orderId(order.getOrderId())
+	            .paymentId(order.getPaymentId())
 	            .build();
 
 	    PaymentResponse paymentResponse = paymentClient.refundPayment(refundRequest);
@@ -183,6 +193,15 @@ public class OrderServiceImpl implements OrderService {
 
 		return Order.builder().userId(userId).orderStatus(OrderStatus.PENDING).paymentStatus(PaymentStatus.PENDING)
 				.build();
+	}
+
+	private void createShipments(Order order) {
+
+		order.getOrderItems().stream()
+				.map(OrderItem::getWarehouseId)
+				.distinct()
+				.forEach(warehouseId -> shipmentClient.createShipment(
+						order.getOrderId(), order.getUserId(), warehouseId));
 	}
 
 	private OrderProcessingResult processCartItems(CartResponse cartResponse, Order order) {

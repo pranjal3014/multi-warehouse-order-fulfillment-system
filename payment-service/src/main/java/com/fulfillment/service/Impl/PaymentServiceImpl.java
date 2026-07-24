@@ -13,6 +13,7 @@ import com.fulfillment.enums.PaymentStatus;
 import com.fulfillment.exception.PaymentAlreadyExistsException;
 import com.fulfillment.exception.PaymentNotFoundException;
 import com.fulfillment.mapper.PaymentMapper;
+import com.fulfillment.kafka.PaymentEventProducer;
 import com.fulfillment.repository.PaymentRepository;
 import com.fulfillment.service.PaymentService;
 
@@ -25,6 +26,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
 
     private final PaymentMapper paymentMapper;
+
+    private final PaymentEventProducer paymentEventProducer;
 
     @Override
     public PaymentResponse makePayment(PaymentRequest paymentRequest) {
@@ -43,6 +46,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
+        paymentEventProducer.publishPaymentSuccessEvent(savedPayment);
+
         return paymentMapper.toResponse(savedPayment);
     }
 
@@ -60,6 +65,8 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPaymentStatus(PaymentStatus.REFUNDED);
 
         Payment updatedPayment = paymentRepository.save(payment);
+
+        paymentEventProducer.publishPaymentRefundEvent(updatedPayment);
 
         return paymentMapper.toResponse(updatedPayment);
     }

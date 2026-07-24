@@ -23,8 +23,4 @@ public class KafkaTopicConfig {
         return TopicBuilder.name("shipment-events").partitions(1).replicas(1).build();
     }
 
-    @Bean
-    public NewTopic inventoryEventsTopic() {
-        return TopicBuilder.name("inventory-events").partitions(1).replicas(1).build();
-    }
 }

@@ -14,6 +14,7 @@ import com.fulfillment.enums.ShipmentStatus;
 import com.fulfillment.exception.ShipmentAlreadyExistsException;
 import com.fulfillment.exception.ShipmentNotFoundException;
 import com.fulfillment.mapper.ShipmentMapper;
+import com.fulfillment.kafka.ShipmentEventProducer;
 import com.fulfillment.repository.ShipmentRepository;
 import com.fulfillment.service.ShipmentService;
 
@@ -27,6 +28,8 @@ public class ShipmentServiceImpl implements ShipmentService {
     private final ShipmentRepository shipmentRepository;
 
     private final ShipmentMapper shipmentMapper;
+
+    private final ShipmentEventProducer shipmentEventProducer;
 
     @Override
     public ShipmentResponse createShipment(CreateShipmentRequest createShipmentRequest) {
@@ -47,6 +50,8 @@ public class ShipmentServiceImpl implements ShipmentService {
 
         Shipment savedShipment = shipmentRepository.save(shipment);
 
+        shipmentEventProducer.publishShipmentCreatedEvent(savedShipment);
+
         return shipmentMapper.toResponse(savedShipment);
     }
 
@@ -62,6 +67,14 @@ public class ShipmentServiceImpl implements ShipmentService {
         shipment.setShipmentStatus(updateShipmentStatusRequest.getShipmentStatus());
 
         Shipment updatedShipment = shipmentRepository.save(shipment);
+
+        if (updatedShipment.getShipmentStatus() == ShipmentStatus.SHIPPED) {
+            shipmentEventProducer.publishShipmentShippedEvent(updatedShipment);
+        }
+
+        if (updatedShipment.getShipmentStatus() == ShipmentStatus.DELIVERED) {
+            shipmentEventProducer.publishShipmentDeliveredEvent(updatedShipment);
+        }
 
         return shipmentMapper.toResponse(updatedShipment);
     }

@@ -7,7 +7,6 @@ public enum NotificationEventType {
     PAYMENT_REFUND,
     SHIPMENT_CREATED,
     SHIPMENT_SHIPPED,
-    SHIPMENT_DELIVERED,
-    INVENTORY_LOW
+    SHIPMENT_DELIVERED
 
 }

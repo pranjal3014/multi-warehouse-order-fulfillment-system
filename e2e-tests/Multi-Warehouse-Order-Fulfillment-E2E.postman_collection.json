@@ -1,0 +1,109 @@
+{
+  "info": {
+    "name": "Multi-Warehouse Order Fulfillment - E2E",
+    "description": "GraphQL smoke and negative tests. Run services and PostgreSQL/Kafka first. IDs are saved as collection variables by the create requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "productUrl", "value": "http://localhost:8081/graphql" },
+    { "key": "inventoryUrl", "value": "http://localhost:8082/graphql" },
+    { "key": "pricingUrl", "value": "http://localhost:8084/graphql" },
+    { "key": "cartUrl", "value": "http://localhost:8085/graphql" },
+    { "key": "orderUrl", "value": "http://localhost:8086/graphql" },
+    { "key": "paymentUrl", "value": "http://localhost:8087/graphql" },
+    { "key": "shipmentUrl", "value": "http://localhost:8088/graphql" },
+    { "key": "userId", "value": "101" },
+    { "key": "productId", "value": "" },
+    { "key": "warehouseId", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "shipmentId", "value": "" },
+    { "key": "trackingNumber", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Product",
+      "item": [
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"query\": \"mutation { createProduct(product: { productSku: \\\"SKU-E2E-001\\\", productName: \\\"E2E Product\\\", productDesc: \\\"Integration test product\\\", productCategory: \\\"ELECTRONICS\\\", productPrice: 1000.00 }) { productId productSku productName productPrice active } }\"\n}" },
+            "url": "{{productUrl}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["const product = pm.response.json().data.createProduct;", "pm.expect(product.productId).to.exist;", "pm.collectionVariables.set('productId', product.productId);"] } }]
+        },
+        {
+          "name": "Get Product By Id",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { productById(id: {{productId}}) { productId productSku productName productPrice } }\"}" }, "url": "{{productUrl}}" }
+        }
+      ]
+    },
+    {
+      "name": "02 Inventory and Pricing",
+      "item": [
+        {
+          "name": "Create Warehouse",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { createWarehouse(warehouse: { wName: \\\"E2E Warehouse\\\", wCode: \\\"E2E-WH\\\", wCity: \\\"Pune\\\", wState: \\\"Maharashtra\\\", wAddress: \\\"E2E Address\\\" }) { wId wCode } }\"}" }, "url": "{{inventoryUrl}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["const warehouse = pm.response.json().data.createWarehouse;", "pm.collectionVariables.set('warehouseId', warehouse.wId);"] } }]
+        },
+        {
+          "name": "Create Inventory",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { createInventory(inventory: { productId: {{productId}}, WarehouseId: {{warehouseId}}, availableQyt: 10 }) { inventoryId productId warehouseId availableQyt reservedQyt } }\"}" }, "url": "{{inventoryUrl}}" }
+        },
+        {
+          "name": "Get Inventory By Product",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { inventoryByProduct(productId: {{productId}}) { inventoryId availableQyt reservedQyt warehouseId } }\"}" }, "url": "{{inventoryUrl}}" }
+        },
+        {
+          "name": "Create Pricing",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { createPricing(pricing: { productId: {{productId}}, basePrice: 1000, discountPercentage: 10, taxPercentage: 18, active: true }) { pricingId productId finalPrice active } }\"}" }, "url": "{{pricingUrl}}" }
+        },
+        {
+          "name": "Get Price By Product",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { pricingByProduct(productId: {{productId}}) { pricingId productId finalPrice active } }\"}" }, "url": "{{pricingUrl}}" }
+        }
+      ]
+    },
+    {
+      "name": "03 Cart and Order",
+      "item": [
+        {
+          "name": "Add To Cart",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { addToCart(request: { userId: {{userId}}, productId: {{productId}}, quantity: 1 }) { cartId userId cartItems { productId quantity } } }\"}" }, "url": "{{cartUrl}}" }
+        },
+        {
+          "name": "Get Cart",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { getCart(userId: {{userId}}) { cartId userId cartItems { productId quantity } } }\"}" }, "url": "{{cartUrl}}" }
+        },
+        {
+          "name": "Place Order - expected current failure",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { placeOrder(request: { userId: {{userId}} }) { orderId orderStatus paymentStatus totalAmount orderItems { productId warehouseId quantity price } } }\"}" }, "url": "{{orderUrl}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.expect(pm.response.json().errors).to.exist;"] } }]
+        },
+        {
+          "name": "Order Not Found",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { orderById(orderId: 999999) { orderId } }\"}" }, "url": "{{orderUrl}}" }
+        }
+      ]
+    },
+    {
+      "name": "04 Shipment",
+      "item": [
+        {
+          "name": "Create Shipment",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { createShipment(createShipmentRequest: { orderId: {{orderId}}, userId: {{userId}}, warehouseId: {{warehouseId}} }) { shipmentId trackingNumber shipmentStatus } }\"}" }, "url": "{{shipmentUrl}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["const shipment = pm.response.json().data.createShipment;", "pm.collectionVariables.set('shipmentId', shipment.shipmentId);", "pm.collectionVariables.set('trackingNumber', shipment.trackingNumber);"] } }]
+        },
+        {
+          "name": "Update Shipment Statuses",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"mutation { updateShipmentStatus(updateShipmentStatusRequest: { shipmentId: {{shipmentId}}, shipmentStatus: SHIPPED }) { shipmentId shipmentStatus } }\"}" }, "url": "{{shipmentUrl}}" }
+        },
+        {
+          "name": "Invalid Tracking Number",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"query\":\"query { shipmentByTrackingNumber(trackingNumber: \\\"INVALID-TRACKING\\\") { shipmentId } }\"}" }, "url": "{{shipmentUrl}}" }
+        }
+      ]
+    }
+  ]
+}

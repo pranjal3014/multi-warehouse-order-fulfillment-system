@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fulfillment.notification_service.dto.event.InventoryLowEvent;
 import com.fulfillment.notification_service.dto.event.OrderPlacedEvent;
 import com.fulfillment.notification_service.dto.event.PaymentRefundEvent;
 import com.fulfillment.notification_service.dto.event.PaymentSuccessEvent;
@@ -114,20 +113,6 @@ public class NotificationEventConsumer {
         }
 
         log.warn("Unsupported shipment event type : {}", eventType);
-    }
-
-    @KafkaListener(topics = "inventory-events", groupId = "notification-service")
-    public void consumeInventoryEvent(String event) {
-
-        InventoryLowEvent inventoryLowEvent = readEvent(event, InventoryLowEvent.class);
-
-        notificationService.createNotification(
-                null,
-                null,
-                NotificationEventType.INVENTORY_LOW,
-                "Inventory is low for Product #" + inventoryLowEvent.getProductId()
-                        + " at Warehouse #" + inventoryLowEvent.getWarehouseId()
-                        + ". Available Quantity : " + inventoryLowEvent.getAvailableQuantity());
     }
 
     private NotificationEventType readEventType(String event) {
