@@ -3,7 +3,9 @@ package com.fulfillment.service.Impl;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.fulfillment.dto.request.LoginRequest;
 import com.fulfillment.dto.request.UserRegistrationRequest;
 import com.fulfillment.dto.request.UserUpdateRequest;
 import com.fulfillment.dto.request.WarehouseManagerApplicationRequest;
@@ -25,6 +27,7 @@ public class UserServiceImpl implements UserService {
 
 	private final UserRepository userRepository;
 	private final UserMapper mapper;
+	private final PasswordEncoder passwordEncoder;
 
 	@Override
 	public UserResponse registerCustomer(UserRegistrationRequest request) {
@@ -38,12 +41,29 @@ public class UserServiceImpl implements UserService {
 		user.setUserName(request.getUserName());
 		user.setUserEmail(request.getUserEmail());
 		user.setUserContact(request.getUserContact());
-		user.setUserPassword(request.getUserPassword());
+		user.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
 		user.setRole(Role.CUSTOMER);
 		user.setUserStatus(UserStatus.ACTIVE);
 		User savedUser = userRepository.save(user);
 
 		return mapper.toResponse(savedUser);
+	}
+
+	@Override
+	public UserResponse authenticateUser(LoginRequest request) {
+
+		User user = userRepository.findByUserEmail(request.getUserEmail())
+				.orElseThrow(() -> new RuntimeException("Invalid user credentials"));
+
+		if (!passwordEncoder.matches(request.getUserPassword(), user.getUserPassword())) {
+			throw new RuntimeException("Invalid user credentials");
+		}
+
+		if (user.getUserStatus() != UserStatus.ACTIVE) {
+			throw new RuntimeException("User is not active");
+		}
+
+		return mapper.toResponse(user);
 	}
 
 	@Override
@@ -58,7 +78,7 @@ public class UserServiceImpl implements UserService {
 		user.setUserName(request.getUserName());
 		user.setUserEmail(request.getUserEmail());
 		user.setUserContact(request.getUserContact());
-		user.setUserPassword(request.getUserPassword());
+		user.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
 
 		user.setRole(Role.WAREHOUSE_MANAGER);
 		user.setUserStatus(UserStatus.PENDING);

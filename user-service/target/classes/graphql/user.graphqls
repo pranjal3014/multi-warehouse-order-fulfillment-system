@@ -35,6 +35,12 @@ input UserRegistrationInput {
     userPassword: String!
 }
 
+input LoginInput {
+
+    userEmail: String!
+    userPassword: String!
+}
+
 input WarehouseManagerApplicationInput {
 
     userName: String!
@@ -61,6 +67,10 @@ type Query {
 }
 
 type Mutation {
+
+    authenticateUser(
+        request: LoginInput!
+    ): User
 
     registerCustomer(
         user: UserRegistrationInput!

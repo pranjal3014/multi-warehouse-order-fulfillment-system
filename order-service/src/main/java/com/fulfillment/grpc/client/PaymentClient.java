@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.fulfillment.dto.payment.PaymentRequest;
 import com.fulfillment.dto.payment.PaymentResponse;
@@ -15,12 +16,15 @@ import com.fulfillment.exception.PaymentFailedException;
 import lombok.RequiredArgsConstructor;
 
 @Component
-@RequiredArgsConstructor
 public class PaymentClient {
 
-    private final RestClient restClient = RestClient.builder()
-            .baseUrl("http://localhost:8087/graphql")
-            .build();
+    private final RestClient restClient;
+
+    public PaymentClient(@Value("${payment.service.url:http://localhost:8087/graphql}") String paymentServiceUrl) {
+        this.restClient = RestClient.builder()
+                .baseUrl(paymentServiceUrl)
+                .build();
+    }
     
     
     @SuppressWarnings("unchecked")
