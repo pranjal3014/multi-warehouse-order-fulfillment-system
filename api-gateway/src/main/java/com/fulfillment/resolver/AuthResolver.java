@@ -10,20 +10,15 @@ import org.springframework.web.client.RestClient;
 
 import com.fulfillment.dto.LoginRequest;
 import com.fulfillment.dto.LoginResponse;
-import com.fulfillment.service.JwtService;
 
 @Controller
 public class AuthResolver {
 
-    private final JwtService jwtService;
-
     private final RestClient restClient;
 
     public AuthResolver(
-            JwtService jwtService,
             @Value("${user.service.url:http://localhost:8083/graphql}") String userServiceUrl) {
 
-        this.jwtService = jwtService;
         this.restClient = RestClient.builder()
                 .baseUrl(userServiceUrl)
                 .build();
@@ -35,7 +30,8 @@ public class AuthResolver {
 
         String mutation = """
             mutation($request: LoginInput!) {
-              authenticateUser(request: $request) {
+              login(request: $request) {
+                token
                 userId
                 userName
                 userEmail
@@ -58,14 +54,14 @@ public class AuthResolver {
         }
 
         Map<String, Object> data = (Map<String, Object>) response.get("data");
-        Map<String, Object> user = (Map<String, Object>) data.get("authenticateUser");
+        Map<String, Object> user = (Map<String, Object>) data.get("login");
 
         Long userId = Long.valueOf(user.get("userId").toString());
         String userEmail = user.get("userEmail").toString();
         String role = user.get("role").toString();
 
         return new LoginResponse(
-                jwtService.generateToken(userId, userEmail, role),
+                user.get("token").toString(),
                 userId,
                 user.get("userName").toString(),
                 userEmail,

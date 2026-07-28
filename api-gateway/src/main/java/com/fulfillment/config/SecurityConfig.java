@@ -9,8 +9,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.fulfillment.filter.JwtAuthenticationFilter;
 import com.fulfillment.filter.RateLimitFilter;
+import com.fulfillment.filter.UserAuthenticationFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserAuthenticationFilter userAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
 
     @Bean
@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .addFilterBefore(rateLimitFilter,
                         UsernamePasswordAuthenticationFilter.class)
 
-                .addFilterBefore(jwtAuthenticationFilter,
+                .addFilterBefore(userAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
 
                 .build();
