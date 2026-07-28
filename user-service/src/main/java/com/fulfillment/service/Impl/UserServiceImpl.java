@@ -10,6 +10,8 @@ import com.fulfillment.dto.request.UserRegistrationRequest;
 import com.fulfillment.dto.request.UserUpdateRequest;
 import com.fulfillment.dto.request.WarehouseManagerApplicationRequest;
 import com.fulfillment.dto.response.UserResponse;
+import com.fulfillment.dto.response.LoginResponse;
+import com.fulfillment.dto.response.TokenValidationResponse;
 import com.fulfillment.entity.User;
 import com.fulfillment.enums.Role;
 import com.fulfillment.enums.UserStatus;
@@ -18,6 +20,9 @@ import com.fulfillment.exception.UserNotFoundException;
 import com.fulfillment.mapper.UserMapper;
 import com.fulfillment.repository.UserRepository;
 import com.fulfillment.service.UserService;
+import com.fulfillment.service.JwtService;
+
+import io.jsonwebtoken.Claims;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +33,7 @@ public class UserServiceImpl implements UserService {
 	private final UserRepository userRepository;
 	private final UserMapper mapper;
 	private final PasswordEncoder passwordEncoder;
+	private final JwtService jwtService;
 
 	@Override
 	public UserResponse registerCustomer(UserRegistrationRequest request) {
@@ -64,6 +70,25 @@ public class UserServiceImpl implements UserService {
 		}
 
 		return mapper.toResponse(user);
+	}
+
+	@Override
+	public LoginResponse login(LoginRequest request) {
+
+		UserResponse user = authenticateUser(request);
+
+		return LoginResponse.builder().token(jwtService.generateToken(user.getUserId(), user.getUserEmail(),
+				user.getRole().name())).userId(user.getUserId()).userName(user.getUserName())
+				.userEmail(user.getUserEmail()).role(user.getRole().name()).build();
+	}
+
+	@Override
+	public TokenValidationResponse validateToken(String token) {
+
+		Claims claims = jwtService.validateToken(token);
+
+		return TokenValidationResponse.builder().userId(claims.get("userId", Long.class))
+				.userEmail(claims.getSubject()).role(claims.get("role", String.class)).build();
 	}
 
 	@Override

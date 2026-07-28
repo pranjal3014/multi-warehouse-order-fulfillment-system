@@ -35,6 +35,20 @@ input UserRegistrationInput {
     userPassword: String!
 }
 
+type LoginResponse {
+    token: String
+    userId: ID
+    userName: String
+    userEmail: String
+    role: Role
+}
+
+type TokenValidationResponse {
+    userId: ID
+    userEmail: String
+    role: Role
+}
+
 input LoginInput {
 
     userEmail: String!
@@ -57,6 +71,8 @@ input UserUpdateInput {
 
 type Query {
 
+    validateToken(token: String!): TokenValidationResponse
+
     users: [User]
 
     userById(
@@ -67,6 +83,10 @@ type Query {
 }
 
 type Mutation {
+
+    login(
+        request: LoginInput!
+    ): LoginResponse
 
     authenticateUser(
         request: LoginInput!

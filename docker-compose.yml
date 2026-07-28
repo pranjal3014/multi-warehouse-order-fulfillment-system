@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   postgres:
@@ -68,6 +66,7 @@ services:
   service-registry:
     build:
       context: ./service-registry
+    pull_policy: build
     container_name: service-registry
     restart: unless-stopped
     ports:
@@ -86,6 +85,7 @@ services:
   product-service:
     build:
       context: ./product-service
+    pull_policy: build
     container_name: product-service
     restart: unless-stopped
     environment:
@@ -107,6 +107,7 @@ services:
   inventory-service:
     build:
       context: ./inventory-service
+    pull_policy: build
     container_name: inventory-service
     restart: unless-stopped
     environment:
@@ -128,6 +129,7 @@ services:
   pricing-service:
     build:
       context: ./pricing-service
+    pull_policy: build
     container_name: pricing-service
     restart: unless-stopped
     environment:
@@ -146,6 +148,7 @@ services:
   user-service:
     build:
       context: ./user-service
+    pull_policy: build
     container_name: user-service
     restart: unless-stopped
     environment:
@@ -164,6 +167,7 @@ services:
   cart-service:
     build:
       context: ./cart-service
+    pull_policy: build
     container_name: cart-service
     restart: unless-stopped
     environment:
@@ -188,6 +192,7 @@ services:
   payment-service:
     build:
       context: ./payment-service
+    pull_policy: build
     container_name: payment-service
     restart: unless-stopped
     environment:
@@ -209,6 +214,7 @@ services:
   shipment-service:
     build:
       context: ./shipment-service
+    pull_policy: build
     container_name: shipment-service
     restart: unless-stopped
     environment:
@@ -230,6 +236,7 @@ services:
   notification-service:
     build:
       context: ./notification-service
+    pull_policy: build
     container_name: notification-service
     restart: unless-stopped
     environment:
@@ -251,6 +258,7 @@ services:
   order-service:
     build:
       context: ./order-service
+    pull_policy: build
     container_name: order-service
     restart: unless-stopped
     environment:
@@ -283,6 +291,7 @@ services:
   api-gateway:
     build:
       context: ./api-gateway
+    pull_policy: build
     container_name: api-gateway
     restart: unless-stopped
     ports:

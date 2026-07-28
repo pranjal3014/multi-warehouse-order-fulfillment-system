@@ -48,7 +48,7 @@ Register a user, then obtain a JWT through the gateway GraphQL endpoint:
 ```bash
 curl -X POST http://localhost:8080/auth/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"mutation { login(request: {userEmail: \\\"customer@example.com\\\", userPassword: \\\"password\\\"}) { token userId userName userEmail role } }"}'
+  -d '{"query":"mutation { login(request: {userEmail: \"customer@example.com\", userPassword: \"password\"}) { token userId userName userEmail role } }"}'
 ```
 
 Use the returned token for gateway requests:
