@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import com.fulfillment.dto.request.InventoryRequest;
 import com.fulfillment.dto.response.InventoryResponse;
@@ -27,6 +29,7 @@ public class InventoryServiceImpl implements InventoryService {
 	private final InventoryMapper mapper;
 
 	@Override
+	@CacheEvict(value = { "inventory", "inventoryByProduct" }, allEntries = true)
 	public InventoryResponse createInventory(InventoryRequest request) {
 		Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
 				.orElseThrow(() -> new WarehouseNotFoundException("Warehouse Not Found"));
@@ -40,6 +43,7 @@ public class InventoryServiceImpl implements InventoryService {
 	}
 
 	@Override
+	@Cacheable(value = "inventory", key = "#inventoryId")
 	public InventoryResponse getInventoryById(Long inventoryId) {
 		Inventory inventory = inventoryRepository.findById(inventoryId)
 				.orElseThrow(() -> new InventoryNotFoundException("Inventory Not Found"));
@@ -49,6 +53,7 @@ public class InventoryServiceImpl implements InventoryService {
 
 	@Override
 	@Transactional(readOnly = true)
+	@Cacheable(value = "inventoryByProduct", key = "#productId")
 	public List<InventoryResponse> getInventoryByProduct(Long productId) {
 		return inventoryRepository
                 .findByProductId(productId)
@@ -58,6 +63,7 @@ public class InventoryServiceImpl implements InventoryService {
 	}
 
 	@Override
+	@CacheEvict(value = { "inventory", "inventoryByProduct" }, allEntries = true)
 	public InventoryResponse updateInventory(Long inventoryId, InventoryRequest request) {
 		Inventory inventory =
                 inventoryRepository.findById(
@@ -78,6 +84,7 @@ public class InventoryServiceImpl implements InventoryService {
 	}
 
 	@Override
+	@CacheEvict(value = { "inventory", "inventoryByProduct" }, allEntries = true)
 	public Boolean deleteInventory(Long inventoryId) {
 		  inventoryRepository.deleteById(
 	                inventoryId);

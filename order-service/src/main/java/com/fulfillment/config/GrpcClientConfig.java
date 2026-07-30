@@ -4,15 +4,25 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 public class GrpcClientConfig {
+
+    @Value("${inventory.grpc.host:localhost}")
+    private String inventoryGrpcHost;
+
+    @Value("${pricing.grpc.host:localhost}")
+    private String pricingGrpcHost;
+
+    @Value("${cart.grpc.host:localhost}")
+    private String cartGrpcHost;
 
     @Bean
     ManagedChannel inventoryManagedChannel() {
 
         return ManagedChannelBuilder
-                .forAddress("localhost", 9092)
+                .forAddress(inventoryGrpcHost, 9095)
                 .usePlaintext()
                 .build();
     }
@@ -21,7 +31,7 @@ public class GrpcClientConfig {
     ManagedChannel pricingManagedChannel() {
 
         return ManagedChannelBuilder
-                .forAddress("localhost", 9091)
+                .forAddress(pricingGrpcHost, 9091)
                 .usePlaintext()
                 .build();
     }
@@ -30,7 +40,7 @@ public class GrpcClientConfig {
     ManagedChannel cartManagedChannel() {
 
         return ManagedChannelBuilder
-                .forAddress("localhost", 9093)
+                .forAddress(cartGrpcHost, 9093)
                 .usePlaintext()
                 .build();
     }

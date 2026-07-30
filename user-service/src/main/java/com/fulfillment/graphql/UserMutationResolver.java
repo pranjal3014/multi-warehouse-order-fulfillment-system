@@ -5,9 +5,11 @@ import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 
 import com.fulfillment.dto.request.UserRegistrationRequest;
+import com.fulfillment.dto.request.LoginRequest;
 import com.fulfillment.dto.request.UserUpdateRequest;
 import com.fulfillment.dto.request.WarehouseManagerApplicationRequest;
 import com.fulfillment.dto.response.UserResponse;
+import com.fulfillment.dto.response.LoginResponse;
 import com.fulfillment.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,18 @@ public class UserMutationResolver {
 	public UserResponse registerCustomer(@Argument UserRegistrationRequest user) {
 
 		return userService.registerCustomer(user);
+	}
+
+	@MutationMapping
+	public UserResponse authenticateUser(@Argument LoginRequest request) {
+
+		return userService.authenticateUser(request);
+	}
+
+	@MutationMapping
+	public LoginResponse login(@Argument LoginRequest request) {
+
+		return userService.login(request);
 	}
 
 	@MutationMapping

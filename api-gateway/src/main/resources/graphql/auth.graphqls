@@ -1,0 +1,20 @@
+type Query {
+    gatewayHealth: String
+}
+
+type Mutation {
+    login(request: LoginInput!): LoginResponse
+}
+
+input LoginInput {
+    userEmail: String!
+    userPassword: String!
+}
+
+type LoginResponse {
+    token: String
+    userId: ID
+    userName: String
+    userEmail: String
+    role: String
+}

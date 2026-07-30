@@ -3,6 +3,8 @@ package com.fulfillment.product_service.service.Impl;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import com.fulfillment.product_service.dto.ProductInput;
 import com.fulfillment.product_service.dto.ProductResponse;
@@ -22,6 +24,7 @@ public class ProductServiceImpl implements ProductService{
 	private final ProductMapper mapper;
 
 	@Override
+	@Cacheable(value = "products")
 	public List<ProductResponse> getAllProduct() {
 		List<Product> products = productRepository.findAll();
 		return products.stream()
@@ -30,18 +33,21 @@ public class ProductServiceImpl implements ProductService{
 	}
 
 	@Override
+	@Cacheable(value = "product", key = "#id")
 	public ProductResponse getProductById(Long id) {
 		Product product = productRepository.findById(id).orElseThrow(()->new ProductNotFoundException("Product Not Found!!!"));
 		return mapper.convertToDto(product);
 	}
 
 	@Override
+	@Cacheable(value = "product", key = "#sku")
 	public ProductResponse getProductBySku(String sku) {
 		Product product = productRepository.findByProductSku(sku).orElseThrow(()->new ProductNotFoundException("Product Not Found with this sku id: "+sku));
 		return mapper.convertToDto(product);
 	}
 
 	@Override
+	@CacheEvict(value = { "products", "product" }, allEntries = true)
 	public ProductResponse createProduct(ProductInput request) {
 		if(productRepository.existsByProductSku(request.getProductSku())) {
 			throw new ProductAlredayExistsException("Sku Already Exists");
@@ -52,6 +58,7 @@ public class ProductServiceImpl implements ProductService{
 	}
 
 	@Override
+	@CacheEvict(value = { "products", "product" }, allEntries = true)
 	public ProductResponse updateProduct(Long id, ProductInput request) {
 		Product product = productRepository.findById(id).orElseThrow(()->new ProductNotFoundException("Product Not Found!!!"));
 		product.setProductSku(request.getProductSku());
@@ -64,6 +71,7 @@ public class ProductServiceImpl implements ProductService{
 	}
 
 	@Override
+	@CacheEvict(value = { "products", "product" }, allEntries = true)
     public void deleteProduct(Long id) {
 
         Product product = productRepository.findById(id)

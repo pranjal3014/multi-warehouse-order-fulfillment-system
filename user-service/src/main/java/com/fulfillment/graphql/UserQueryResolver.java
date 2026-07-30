@@ -7,6 +7,7 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import com.fulfillment.dto.response.UserResponse;
+import com.fulfillment.dto.response.TokenValidationResponse;
 import com.fulfillment.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,11 @@ public class UserQueryResolver {
 	@QueryMapping
 	public UserResponse userById(@Argument Long userId) {
 		return userService.getUserById(userId);
+	}
+
+	@QueryMapping
+	public TokenValidationResponse validateToken(@Argument String token) {
+		return userService.validateToken(token);
 	}
 
 	@QueryMapping
