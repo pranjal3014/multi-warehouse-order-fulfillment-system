@@ -9,6 +9,10 @@ import com.fulfillment.inventory.grpc.InventoryItem;
 import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.inventory.grpc.InventoryRequest;
 import com.fulfillment.inventory.grpc.InventoryServiceGrpc;
+import com.fulfillment.inventory.grpc.ReleaseInventoryRequest;
+import com.fulfillment.inventory.grpc.ReleaseInventoryResponse;
+import com.fulfillment.inventory.grpc.ReserveInventoryRequest;
+import com.fulfillment.inventory.grpc.ReserveInventoryResponse;
 import com.fulfillment.service.InventoryService;
 
 import io.grpc.Status;
@@ -19,50 +23,84 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceImplBase {
 
-    private final InventoryService inventoryService;
-    
-    @Override
-    public void checkInventory(
-            InventoryRequest request,
-            StreamObserver<InventoryListResponse> responseObserver) {
-    	try {
-        List<InventoryResponse> inventories =
-                inventoryService.getInventoryByProduct(request.getProductId());
+	private final InventoryService inventoryService;
 
-        if (inventories == null || inventories.isEmpty()) {
-            responseObserver.onError(
-                    Status.NOT_FOUND
-                            .withDescription("Inventory not found")
-                            .asRuntimeException());
-            return;
-        }
+	@Override
+	public void checkInventory(InventoryRequest request, StreamObserver<InventoryListResponse> responseObserver) {
+		try {
+			List<InventoryResponse> inventories = inventoryService.getInventoryByProduct(request.getProductId());
 
-        InventoryListResponse.Builder responseBuilder =
-                InventoryListResponse.newBuilder();
+			if (inventories == null || inventories.isEmpty()) {
+				responseObserver.onError(Status.NOT_FOUND.withDescription("Inventory not found").asRuntimeException());
+				return;
+			}
 
-        for (InventoryResponse inventory : inventories) {
+			InventoryListResponse.Builder responseBuilder = InventoryListResponse.newBuilder();
 
-            InventoryItem item = InventoryItem.newBuilder()
-                    .setInventoryId(inventory.getInventoryId())
-                    .setProductId(inventory.getProductId())
-                    .setWarehouseId(inventory.getWarehouseId())
-                    .setAvailableQuantity(inventory.getAvailableQyt())
-                    .setAvailable(inventory.getAvailableQyt() > 0)
-                    .build();
+			for (InventoryResponse inventory : inventories) {
 
-            responseBuilder.addInventories(item);
-        }
+				InventoryItem item = InventoryItem.newBuilder().setInventoryId(inventory.getInventoryId())
+						.setProductId(inventory.getProductId()).setWarehouseId(inventory.getWarehouseId())
+						.setAvailableQuantity(inventory.getAvailableQyt()).setAvailable(inventory.getAvailableQyt() > 0)
+						.build();
 
-        responseObserver.onNext(responseBuilder.build());
-        responseObserver.onCompleted();
-    	}catch (Exception e) {
-            e.printStackTrace();
-            responseObserver.onError(
-                io.grpc.Status.INTERNAL
-                    .withDescription(e.getMessage())
-                    .asRuntimeException()
-            );
-            return;
-        }
-    }
+				responseBuilder.addInventories(item);
+			}
+
+			responseObserver.onNext(responseBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			e.printStackTrace();
+			responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
+			return;
+		}
+	}
+
+	@Override
+	public void reserveInventory(ReserveInventoryRequest request,
+			StreamObserver<ReserveInventoryResponse> responseObserver) {
+
+		try {
+
+			inventoryService.reserveInventory(request.getProductId(), request.getWarehouseId(), request.getQuantity());
+
+			ReserveInventoryResponse response = ReserveInventoryResponse.newBuilder().setSuccess(true)
+					.setMessage("Inventory Reserved Successfully").build();
+
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+
+		} catch (Exception e) {
+
+			ReserveInventoryResponse response = ReserveInventoryResponse.newBuilder().setSuccess(false)
+					.setMessage(e.getMessage()).build();
+
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+		}
+	}
+
+	@Override
+	public void releaseInventory(ReleaseInventoryRequest request,
+			StreamObserver<ReleaseInventoryResponse> responseObserver) {
+
+		try {
+
+			inventoryService.releaseInventory(request.getProductId(), request.getWarehouseId(), request.getQuantity());
+
+			ReleaseInventoryResponse response = ReleaseInventoryResponse.newBuilder().setSuccess(true)
+					.setMessage("Inventory Released Successfully").build();
+
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+
+		} catch (Exception e) {
+
+			ReleaseInventoryResponse response = ReleaseInventoryResponse.newBuilder().setSuccess(false)
+					.setMessage(e.getMessage()).build();
+
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+		}
+	}
 }
