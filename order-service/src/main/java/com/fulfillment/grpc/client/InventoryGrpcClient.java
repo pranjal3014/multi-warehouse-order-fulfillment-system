@@ -1,29 +1,49 @@
 package com.fulfillment.grpc.client;
 
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.inventory.grpc.InventoryRequest;
+import com.fulfillment.inventory.grpc.InventoryListResponse;
 import com.fulfillment.inventory.grpc.InventoryServiceGrpc;
+import com.fulfillment.inventory.grpc.ReleaseInventoryRequest;
+import com.fulfillment.inventory.grpc.ReserveInventoryRequest;
 
 import io.grpc.ManagedChannel;
-import lombok.RequiredArgsConstructor;
+import io.grpc.ManagedChannelBuilder;
 
-@Component
-@RequiredArgsConstructor
+@Service
 public class InventoryGrpcClient {
 
-    private final ManagedChannel inventoryManagedChannel;
+	private final InventoryServiceGrpc.InventoryServiceBlockingStub inventoryBlockingStub;
 
-    public InventoryListResponse checkInventory(Long productId) {
+	public InventoryGrpcClient() {
 
-        InventoryServiceGrpc.InventoryServiceBlockingStub stub =
-                InventoryServiceGrpc.newBlockingStub(inventoryManagedChannel);
+		ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 9092).usePlaintext().build();
 
-        InventoryRequest request = InventoryRequest.newBuilder()
-                .setProductId(productId)
-                .build();
+		inventoryBlockingStub = InventoryServiceGrpc.newBlockingStub(channel);
+	}
 
-        return stub.checkInventory(request);
-    }
+	public InventoryListResponse checkInventory(Long productId) {
+
+		InventoryRequest request = InventoryRequest.newBuilder().setProductId(productId).build();
+
+		return inventoryBlockingStub.checkInventory(request);
+	}
+
+	public void reserveInventory(Long productId, Long warehouseId, Integer quantity) {
+
+		ReserveInventoryRequest request = ReserveInventoryRequest.newBuilder().setProductId(productId)
+				.setWarehouseId(warehouseId).setQuantity(quantity).build();
+
+		inventoryBlockingStub.reserveInventory(request);
+	}
+
+	public void releaseInventory(Long productId, Long warehouseId, Integer quantity) {
+
+		ReleaseInventoryRequest request = ReleaseInventoryRequest.newBuilder().setProductId(productId)
+				.setWarehouseId(warehouseId).setQuantity(quantity).build();
+
+		inventoryBlockingStub.releaseInventory(request);
+	}
+
 }
