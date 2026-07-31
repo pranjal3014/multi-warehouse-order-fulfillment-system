@@ -1,13 +1,9 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
-WORKDIR /app
-COPY .mvn .mvn
-COPY mvnw .
-RUN chmod +x mvnw
-COPY pom.xml .
-COPY src ./src
-RUN ./mvnw clean package -Dmaven.test.skip=true
-
 FROM eclipse-temurin:21-jre
+
 WORKDIR /app
-COPY --from=build /app/target/api-gateway-0.0.1-SNAPSHOT.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+COPY target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java","-jar","app.jar"]
