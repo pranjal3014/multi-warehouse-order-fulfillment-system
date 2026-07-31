@@ -22,6 +22,6 @@ public class OrderEventProducer {
                 .userId(order.getUserId())
                 .build();
 
-        kafkaTemplate.send("order-events", event);
+        kafkaTemplate.send("order-created", event);
     }
 }
