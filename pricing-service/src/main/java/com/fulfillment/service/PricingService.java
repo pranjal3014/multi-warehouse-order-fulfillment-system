@@ -9,7 +9,7 @@ public interface PricingService {
 
 	PricingResponse createPricing(PricingRequest request);
 
-	PricingResponse updatePricing(Long pricingId, PricingRequest request);
+	PricingResponse updatePricing(Long productId, PricingRequest request);
 
 	PricingResponse getPricingById(Long pricingId);
 

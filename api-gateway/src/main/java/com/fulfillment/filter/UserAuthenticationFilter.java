@@ -2,15 +2,16 @@ package com.fulfillment.filter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.fulfillment.security.JwtService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,68 +21,48 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class UserAuthenticationFilter extends OncePerRequestFilter {
 
-    private final RestClient restClient;
-
-    public UserAuthenticationFilter(
-            @Value("${user.service.url:http://localhost:8083/graphql}") String userServiceUrl) {
-
-        this.restClient = RestClient.builder()
-                .baseUrl(userServiceUrl)
-                .build();
-    }
+    @Autowired
+    private JwtService jwtService;
 
     @Override
-    @SuppressWarnings("unchecked")
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
 
-        String authorization = request.getHeader("Authorization");
+        String authHeader = request.getHeader("Authorization");
 
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
+        // No token present → continue request
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            String query = """
-                query($token: String!) {
-                  validateToken(token: $token) {
-                    userEmail
-                    role
-                  }
-                }
-                """;
 
-            Map<String, Object> body = Map.of(
-                    "query", query,
-                    "variables", Map.of("token", authorization.substring(7)));
+            String token = authHeader.substring(7);
 
-            Map<String, Object> graphqlResponse = restClient.post()
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
+            // Validate JWT
+            if (jwtService.validateToken(token)) {
 
-            if (graphqlResponse.containsKey("errors")) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+                String username = jwtService.extractUsername(token);
+                String role = jwtService.extractRole(token);
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                username,
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 
-            Map<String, Object> data = (Map<String, Object>) graphqlResponse.get("data");
-            Map<String, Object> user = (Map<String, Object>) data.get("validateToken");
-            String userEmail = user.get("userEmail").toString();
-            String role = user.get("role").toString();
-
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            userEmail,
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
+
         } catch (Exception ex) {
+
+            SecurityContextHolder.clearContext();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
     }

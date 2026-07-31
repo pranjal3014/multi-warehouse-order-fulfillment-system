@@ -20,6 +20,7 @@ import com.fulfillment.entity.Order;
 import com.fulfillment.entity.OrderItem;
 import com.fulfillment.entity.OrderStatus;
 import com.fulfillment.entity.PaymentStatus;
+import com.fulfillment.exception.InventoryUnavailableException;
 import com.fulfillment.exception.OrderNotFoundException;
 import com.fulfillment.exception.PaymentFailedException;
 import com.fulfillment.grpc.client.CartGrpcClient;
@@ -89,6 +90,13 @@ public class OrderServiceImpl implements OrderService {
 
 	        savedOrder.setPaymentStatus(status);
 	        savedOrder.setOrderStatus(OrderStatus.CANCELLED);
+	        for (OrderItem item : savedOrder.getOrderItems()) {
+
+	            inventoryGrpcClient.releaseInventory(
+	                    item.getProductId(),
+	                    item.getWarehouseId(),
+	                    item.getQuantity());
+	        }
 	        orderRepository.save(savedOrder);
 
 	        throw new PaymentFailedException("Payment failed.");
@@ -146,8 +154,15 @@ public class OrderServiceImpl implements OrderService {
 
 	    Order updatedOrder = orderRepository.save(order);
 
-	    // 5. TODO: Release Inventory (Inventory Service)
-	    // inventoryGrpcClient.releaseInventory(order.getOrderItems());
+	    // 5. Release Inventory (Inventory Service)
+	    for (OrderItem item : order.getOrderItems()) {
+
+	        inventoryGrpcClient.releaseInventory(
+	                item.getProductId(),
+	                item.getWarehouseId(),
+	                item.getQuantity());
+	    }
+	    
 
 	    // 6. TODO: Publish Order Cancelled Event (Kafka)
 
@@ -216,8 +231,13 @@ public class OrderServiceImpl implements OrderService {
 
 			InventoryItem selectedInventory = inventory.getInventoriesList().stream()
 					.filter(item -> item.getAvailableQuantity() >= cartItem.getQuantity()).findFirst()
-					.orElseThrow(() -> new RuntimeException("Inventory not available"));
-
+					.orElseThrow(() -> new InventoryUnavailableException("Inventory not available"));
+			
+			inventoryGrpcClient.reserveInventory(
+			        cartItem.getProductId(),
+			        selectedInventory.getWarehouseId(),
+			        cartItem.getQuantity());
+			
 			PriceResponse price = pricingGrpcClient.getPriceByProductId(cartItem.getProductId());
 
 			OrderItem orderItem = OrderItem.builder().order(order).productId(cartItem.getProductId())

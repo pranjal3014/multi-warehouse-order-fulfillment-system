@@ -55,41 +55,63 @@ public class InventoryServiceImpl implements InventoryService {
 	@Transactional(readOnly = true)
 	@Cacheable(value = "inventoryByProduct", key = "#productId")
 	public List<InventoryResponse> getInventoryByProduct(Long productId) {
-		return inventoryRepository
-                .findByProductId(productId)
-                .stream()
-                .map(mapper::toInventoryResponse)
-                .toList();
+		return inventoryRepository.findByProductId(productId).stream().map(mapper::toInventoryResponse).toList();
 	}
 
 	@Override
 	@CacheEvict(value = { "inventory", "inventoryByProduct" }, allEntries = true)
 	public InventoryResponse updateInventory(Long inventoryId, InventoryRequest request) {
-		Inventory inventory =
-                inventoryRepository.findById(
-                        inventoryId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Inventory Not Found"));
+		Inventory inventory = inventoryRepository.findById(inventoryId)
+				.orElseThrow(() -> new RuntimeException("Inventory Not Found"));
 
-        inventory.setAvailableQty(
-                request.getAvailableQyt());
+		inventory.setAvailableQty(request.getAvailableQyt());
 
-        Inventory updatedInventory =
-                inventoryRepository.save(
-                        inventory);
+		Inventory updatedInventory = inventoryRepository.save(inventory);
 
-        return mapper.toInventoryResponse(
-                updatedInventory);
+		return mapper.toInventoryResponse(updatedInventory);
 	}
 
 	@Override
 	@CacheEvict(value = { "inventory", "inventoryByProduct" }, allEntries = true)
 	public Boolean deleteInventory(Long inventoryId) {
-		  inventoryRepository.deleteById(
-	                inventoryId);
+		inventoryRepository.deleteById(inventoryId);
 
-	        return true;
+		return true;
 	}
 
+	@Override
+	@Transactional
+	public void reserveInventory(Long productId, Long warehouseId, Integer quantity) {
+
+		Inventory inventory = inventoryRepository.findByProductIdAndWarehouseWId(productId, warehouseId)
+				.orElseThrow(() -> new InventoryNotFoundException("Inventory Not Found"));
+
+		if (inventory.getAvailableQty() < quantity) {
+			throw new IllegalStateException("Insufficient inventory available.");
+		}
+
+		inventory.setAvailableQty(inventory.getAvailableQty() - quantity);
+
+		inventory.setReservedQty(inventory.getReservedQty() + quantity);
+
+		inventoryRepository.save(inventory);
+	}
+
+	@Override
+	@Transactional
+	public void releaseInventory(Long productId, Long warehouseId, Integer quantity) {
+
+		Inventory inventory = inventoryRepository.findByProductIdAndWarehouseWId(productId, warehouseId)
+				.orElseThrow(() -> new InventoryNotFoundException("Inventory Not Found"));
+
+		if (inventory.getReservedQty() < quantity) {
+			throw new IllegalStateException("Reserved quantity is less than requested quantity.");
+		}
+
+		inventory.setReservedQty(inventory.getReservedQty() - quantity);
+
+		inventory.setAvailableQty(inventory.getAvailableQty() + quantity);
+
+		inventoryRepository.save(inventory);
+	}
 }

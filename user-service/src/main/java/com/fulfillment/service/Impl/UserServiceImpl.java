@@ -16,6 +16,7 @@ import com.fulfillment.entity.User;
 import com.fulfillment.enums.Role;
 import com.fulfillment.enums.UserStatus;
 import com.fulfillment.exception.EmailAlreadyExistsException;
+import com.fulfillment.exception.InvalidUserCredentialsException;
 import com.fulfillment.exception.UserNotFoundException;
 import com.fulfillment.mapper.UserMapper;
 import com.fulfillment.repository.UserRepository;
@@ -62,7 +63,7 @@ public class UserServiceImpl implements UserService {
 				.orElseThrow(() -> new RuntimeException("Invalid user credentials"));
 
 		if (!passwordEncoder.matches(request.getUserPassword(), user.getUserPassword())) {
-			throw new RuntimeException("Invalid user credentials");
+			throw new InvalidUserCredentialsException("Invalid user credentials");
 		}
 
 		if (user.getUserStatus() != UserStatus.ACTIVE) {

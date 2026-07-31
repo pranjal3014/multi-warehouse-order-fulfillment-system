@@ -15,4 +15,8 @@ public interface InventoryService {
 	InventoryResponse updateInventory(Long inventoryId, InventoryRequest request);
 
 	Boolean deleteInventory(Long inventoryId);
+
+	void reserveInventory(Long productId, Long warehouseId, Integer quantity);
+
+	void releaseInventory(Long productId, Long warehouseId, Integer quantity);
 }

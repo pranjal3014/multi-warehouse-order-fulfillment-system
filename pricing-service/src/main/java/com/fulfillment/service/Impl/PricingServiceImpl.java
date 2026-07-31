@@ -8,6 +8,7 @@ import com.fulfillment.dto.request.PricingRequest;
 import com.fulfillment.dto.response.PricingResponse;
 import com.fulfillment.entity.Pricing;
 import com.fulfillment.exception.PricingNotFoundException;
+import com.fulfillment.exception.ProductNotFoundException;
 import com.fulfillment.exception.ProductPricingAlreadyExistsException;
 import com.fulfillment.mapper.PricingMapper;
 import com.fulfillment.repository.PricingRepository;
@@ -40,10 +41,10 @@ public class PricingServiceImpl implements PricingService {
 	}
 
 	@Override
-	public PricingResponse updatePricing(Long pricingId, PricingRequest request) {
+	public PricingResponse updatePricing(Long productId, PricingRequest request) {
 
-		Pricing pricing = pricingRepository.findById(pricingId)
-				.orElseThrow(() -> new PricingNotFoundException("Pricing not found"));
+		Pricing pricing = pricingRepository.findByProductId(productId)
+				.orElseThrow(() -> new ProductNotFoundException("Product not found"));
 
 		pricing.setBasePrice(request.getBasePrice());
 
@@ -88,7 +89,7 @@ public class PricingServiceImpl implements PricingService {
 		Pricing pricing = pricingRepository.findById(pricingId)
 				.orElseThrow(() -> new PricingNotFoundException("Pricing not found"));
 
-		pricingRepository.delete(pricing);
+		pricing.setActive(false);;
 
 		return true;
 	}

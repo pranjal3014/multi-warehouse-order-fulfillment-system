@@ -48,7 +48,7 @@ type Mutation {
     ): Pricing
 
     updatePricing(
-        pricingId: ID!,
+        productId: ID!,
         pricing: PricingInput!
     ): Pricing
 
