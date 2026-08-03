@@ -1,0 +1,58 @@
+type Pricing {
+
+    pricingId: ID!
+    productId: ID!
+
+    basePrice: Float
+    discountPercentage: Float
+    taxPercentage: Float
+
+    finalPrice: Float
+
+    active: Boolean
+
+    createdAt: String
+    updatedAt: String
+}
+
+input PricingInput {
+
+    productId: ID!
+
+    basePrice: Float!
+
+    discountPercentage: Float!
+
+    taxPercentage: Float!
+
+    active: Boolean!
+}
+
+type Query {
+
+    pricings: [Pricing]
+
+    pricingById(
+        pricingId: ID!
+    ): Pricing
+
+    pricingByProduct(
+        productId: ID!
+    ): Pricing
+}
+
+type Mutation {
+
+    createPricing(
+        pricing: PricingInput!
+    ): Pricing
+
+    updatePricing(
+        productId: ID!,
+        pricing: PricingInput!
+    ): Pricing
+
+    deletePricing(
+        pricingId: ID!
+    ): Boolean
+}

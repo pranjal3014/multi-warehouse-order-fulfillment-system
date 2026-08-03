@@ -1,0 +1,57 @@
+type Query {
+
+    getCart(userId: ID!): CartResponse
+
+}
+
+type Mutation {
+
+    addToCart(request: AddToCartRequest!): CartResponse
+
+    updateCart(cartItemId: ID!, request: UpdateCartRequest!): CartResponse
+
+    removeFromCart(cartItemId: ID!): Boolean
+
+    clearCart(userId: ID!): Boolean
+
+}
+
+type CartResponse {
+
+    cartId: ID
+
+    userId: ID
+
+    cartItems: [CartItemResponse]
+
+    createdAt: String
+
+    updatedAt: String
+
+}
+
+type CartItemResponse {
+
+    cartItemId: ID
+
+    productId: ID
+
+    quantity: Int
+
+}
+
+input AddToCartRequest {
+
+    userId: ID!
+
+    productId: ID!
+
+    quantity: Int!
+
+}
+
+input UpdateCartRequest {
+
+    quantity: Int!
+
+}

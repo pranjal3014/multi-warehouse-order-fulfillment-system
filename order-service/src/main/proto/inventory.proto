@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package inventory;
+
+option java_package = "com.fulfillment.inventory.grpc";
+option java_multiple_files = true;
+
+service InventoryService {
+  rpc CheckInventory(InventoryRequest) returns (InventoryListResponse);
+  rpc ReserveInventory(ReserveInventoryRequest)
+        returns (ReserveInventoryResponse);
+  rpc ReleaseInventory(ReleaseInventoryRequest)
+    returns (ReleaseInventoryResponse);
+}
+
+message InventoryRequest {
+  int64 productId = 1;
+}
+
+message InventoryItem {
+  int64 inventoryId = 1;
+  int64 productId = 2;
+  int64 warehouseId = 3;
+  int32 availableQuantity = 4;
+  bool available = 5;
+}
+
+message ReleaseInventoryRequest{
+    int64 productId = 1;
+    int64 warehouseId = 2;
+    int32 quantity = 3;
+}
+
+message ReleaseInventoryResponse{
+    bool success = 1;
+    string message = 2;
+}
+
+message InventoryListResponse {
+  repeated InventoryItem inventories = 1;
+}
+
+message ReserveInventoryRequest{
+    int64 productId = 1;
+    int64 warehouseId = 2;
+    int32 quantity = 3;
+}
+
+message ReserveInventoryResponse{
+    bool success = 1;
+    string message = 2;
+}

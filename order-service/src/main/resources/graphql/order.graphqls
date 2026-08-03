@@ -1,0 +1,77 @@
+type Order {
+
+    orderId: ID!
+    userId: ID!
+
+    totalAmount: Float
+
+    orderStatus: String
+
+    paymentStatus: String
+
+    orderItems: [OrderItem]
+
+    createdAt: String
+    updatedAt: String
+}
+
+type OrderItem {
+
+    orderItemId: ID!
+
+    productId: ID!
+
+    warehouseId: ID!
+
+    quantity: Int!
+
+    price: Float
+}
+
+input PlaceOrderRequest {
+
+    userId: ID!
+
+    paymentMethod: PaymentMethod!
+}
+
+input CancelOrderRequest {
+
+    orderId: ID!
+}
+
+type Query {
+
+    orders: [Order]
+
+    orderById(
+        orderId: ID!
+    ): Order
+
+    ordersByUser(
+        userId: ID!
+    ): [Order]
+    
+    orderByStatus(status: String!): [Order!]!
+}
+
+type Mutation {
+
+    placeOrder(
+        request: PlaceOrderRequest!
+    ): Order
+
+    cancelOrder(
+        request: CancelOrderRequest!
+    ): Boolean
+}
+
+enum PaymentMethod {
+
+    UPI
+    CARD
+    NET_BANKING
+    WALLET
+    COD
+
+}

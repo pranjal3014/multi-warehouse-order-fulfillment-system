@@ -1,0 +1,120 @@
+enum Role {
+    CUSTOMER
+    WAREHOUSE_MANAGER
+    ADMIN
+}
+
+enum UserStatus {
+    ACTIVE
+    PENDING
+    REJECTED
+    INACTIVE
+}
+
+type User {
+
+    userId: ID!
+    userName: String
+    userEmail: String
+    userContact: String
+
+    role: Role
+    userStatus: UserStatus 
+
+    warehouseId: ID
+
+    createdAt: String
+    updatedAt: String
+}
+
+input UserRegistrationInput {
+
+    userName: String!
+    userEmail: String!
+    userContact: String!
+    userPassword: String!
+}
+
+type LoginResponse {
+    token: String
+    userId: ID
+    userName: String
+    userEmail: String
+    role: Role
+}
+
+type TokenValidationResponse {
+    userId: ID
+    userEmail: String
+    role: Role
+}
+
+input LoginInput {
+
+    userEmail: String!
+    userPassword: String!
+}
+
+input WarehouseManagerApplicationInput {
+
+    userName: String!
+    userEmail: String!
+    userContact: String!
+    userPassword: String!
+}
+
+input UserUpdateInput {
+
+    userName: String!
+    userContact: String!
+}
+
+type Query {
+
+    validateToken(token: String!): TokenValidationResponse
+
+    users: [User]
+
+    userById(
+        userId: ID!
+    ): User
+
+    pendingWarehouseManagers: [User]
+}
+
+type Mutation {
+
+    login(
+        request: LoginInput!
+    ): LoginResponse
+
+    authenticateUser(
+        request: LoginInput!
+    ): User
+
+    registerCustomer(
+        user: UserRegistrationInput!
+    ): User
+
+    applyWarehouseManager(
+        user: WarehouseManagerApplicationInput!
+    ): User
+
+    updateUser(
+        userId: ID!,
+        user: UserUpdateInput!
+    ): User
+
+    deleteUser(
+        userId: ID!
+    ): Boolean
+
+    approveWarehouseManager(
+        userId: ID!,
+        warehouseId: ID!
+    ): User
+
+    rejectWarehouseManager(
+        userId: ID!
+    ): User
+}

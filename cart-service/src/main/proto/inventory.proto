@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package inventory;
+
+option java_package = "com.fulfillment.inventory.grpc";
+option java_multiple_files = true;
+
+service InventoryService {
+  rpc CheckInventory(InventoryRequest) returns (InventoryListResponse);
+}
+
+message InventoryRequest {
+  int64 productId = 1;
+}
+
+message InventoryItem {
+  int64 inventoryId = 1;
+  int64 productId = 2;
+  int64 warehouseId = 3;
+  int32 availableQuantity = 4;
+  bool available = 5;
+}
+
+message InventoryListResponse {
+  repeated InventoryItem inventories = 1;
+}

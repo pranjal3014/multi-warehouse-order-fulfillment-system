@@ -1,0 +1,39 @@
+type Product {
+	productId:ID!
+	productSku:String
+	productName:String
+	productDesc:String
+	productCategory:String
+	productPrice:Float
+	active:Boolean
+	createdAt:String
+	updatedAt:String
+}
+
+input ProductInput{
+		productSku:String!,
+		productName:String!,
+		productDesc:String,
+		productCategory:String!,
+		productPrice:Float!
+}
+
+type Query {
+	products : [Product]
+	productById(id:ID!): Product
+	productBySku(productSku:String!):Product
+}
+
+type Mutation{
+	
+	createProduct(
+		product:ProductInput!
+	):Product
+	
+	updateProduct(
+		productId:ID!,
+		product:ProductInput!
+	):Product
+	
+	deleteProduct(id:ID!):Boolean
+}
