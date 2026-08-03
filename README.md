@@ -1,333 +1,384 @@
-# 🚀 Multi-Warehouse Order Fulfillment System
+# Multi-Warehouse Order Fulfillment System
 
-**A production-inspired Order Fulfillment Platform built with Java Spring Boot Microservices**
+**`Java 21`  ·  `Spring Boot 4.1`  ·  `GraphQL`  ·  `gRPC`  ·  `Kafka`  ·  `Redis`  ·  `PostgreSQL`  ·  `Docker`  ·  `Kubernetes`**
 
-Modeled on the backend fulfillment architecture used by companies like Amazon, Flipkart, Blinkit, and Myntra.
+A production-grade, event-driven Order Fulfillment Platform built on Java Spring Boot microservices — modeled after the backend fulfillment architecture used by Amazon, Flipkart, Blinkit, and Myntra.
 
-`Java 21+` · `Spring Boot 4.1` · `GraphQL` · `gRPC` · `Kafka` · `Redis` · `PostgreSQL` · `Docker` · `Kubernetes`
+> **Build:** passing &nbsp;|&nbsp; **Services:** 11 &nbsp;|&nbsp; **License:** MIT &nbsp;|&nbsp; **Status:** Active development
+
+---
+
+## Why This Project
+
+Most backend portfolio projects are CRUD apps with a database attached. This one is different — it simulates the actual hard problem fulfillment platforms solve: **reserving inventory correctly under concurrency, splitting a single order across multiple warehouses, and keeping order/inventory/shipment state consistent across independently deployed services** that only talk to each other over gRPC and Kafka, never by sharing a database.
+
+If you're reviewing this as a hiring manager or engineer: start with [Architecture](#architecture), then [Multi-Warehouse Allocation](#multi-warehouse-allocation-logic), then the [Order Processing Sequence](#order-processing-sequence).
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Features](#features)
-3. [System Architecture](#system-architecture)
-4. [High-Level Request Flow](#high-level-request-flow)
-5. [Microservices & Ports](#microservices--ports)
-6. [Roles & Permissions](#roles--permissions)
-7. [Technology Stack](#technology-stack)
-8. [Service Responsibilities](#service-responsibilities)
-9. [Database Design](#database-design)
-10. [Complete Order Flow](#complete-order-flow)
-11. [Authentication & Authorization](#authentication--authorization)
-12. [GraphQL APIs](#graphql-apis)
-13. [gRPC Communication](#grpc-communication)
-14. [Kafka Topics](#kafka-topics)
-15. [Redis Cache](#redis-cache)
-16. [Monitoring & Observability](#monitoring--observability)
-17. [Docker](#docker)
-18. [Kubernetes](#kubernetes)
-19. [Project Structure](#project-structure)
-20. [Running the Project](#running-the-project)
-21. [Future Enhancements](#future-enhancements)
-22. [Author](#author)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Microservices](#microservices)
+- [Roles & Permissions](#roles--permissions)
+- [Multi-Warehouse Allocation Logic](#multi-warehouse-allocation-logic)
+- [Order Processing Sequence](#order-processing-sequence)
+- [Redis Strategy](#redis-strategy)
+- [Kafka Topics](#kafka-topics)
+- [gRPC Contracts](#grpc-contracts)
+- [JWT & Security](#jwt--security)
+- [Database Design](#database-design)
+- [GraphQL Examples](#graphql-examples)
+- [Folder Structure](#folder-structure)
+- [Getting Started](#getting-started)
+- [Kubernetes Deployment](#kubernetes-deployment)
+- [Observability](#observability)
+- [Features](#features)
+- [Roadmap](#roadmap)
+- [Resume Highlights](#resume-highlights)
+- [License](#license)
+- [Author](#author)
 
 ---
 
-## Overview
+## Architecture
 
-This project demonstrates a realistic, production-grade microservices backend for order fulfillment — covering inventory reservation, multi-warehouse allocation, order lifecycle management, shipment tracking, and event-driven communication between services.
+```
+                                   +-------------------------+
+                                   |       Client Apps         |
+                                   |  Web . Mobile . Postman    |
+                                   +-------------+-------------+
+                                                 |  HTTPS + JWT
+                                                 v
+                                   +-------------------------+
+                                   |       API Gateway          |<----- Service Registry
+                                   |  Routing . JWT Auth         |       (Eureka :8761)
+                                   |         :8080                |
+                                   +-------------+-------------+
+                                                 |
+        +---------------+---------------+-------+-------+---------------+---------------+
+        v               v               v               v               v               v
+  +----------+   +--------------+  +----------+   +----------+   +--------------+  +----------+
+  | Product  |   |  Inventory    |  |  User    |   |  Cart    |   |   Order       |  |Shipment  |
+  | Service  |   |  Service      |  | Service  |   | Service  |   |   Service     |  | Service  |
+  |  :8081   |   |   :8082       |  |  :8083   |   |  :8085   |   |   :8086       |  |  :8087   |
+  +----+-----+   +------+-------+  +----+-----+   +----+-----+   +-------+-------+  +----+-----+
+       |                |                |              |                 |                |
+       |                |                |              |         +-------+--------+       |
+       |                |                |              |         |  gRPC (sync)     |       |
+       |                |                |              |         |  -> Pricing       |       |
+       |                |                |              |         |  -> Inventory     |       |
+       |                |                |              |         +----------------+       |
+       v                v                v              v                 v                v
+  product_db      inventory_db      user_db        cart_db          order_db          shipment_db
+       |                |                                                 |                  |
+       +-------+--------+                                                 +--------+---------+
+               v                                                                   v
+        +-------------+                                                    +-------------+
+        |  Redis        |                                                    |  Kafka        |
+        |  catalog +    |                                                    |  order /      |
+        |  stock cache  |                                                    |  inventory /  |
+        +-------------+                                                    |  shipment      |
+                                                                             +------+------+
+                                                                                    v
+                                                                       +--------------------------+
+                                                                       |  Notification Service      |
+                                                                       |  :8088 . notification_db    |
+                                                                       +------------+-------------+
+                                                                                    v
+                                                                          Email . SMS (planned)
+```
 
-It is a **fulfillment-domain** system, not a full ecommerce platform — payments, refunds, and returns are intentionally out of scope (see [Future Enhancements](#future-enhancements)).
+**Design principles**
 
----
-
-## Features
-
-| Category | Capabilities |
+| Principle | How it's applied |
 |---|---|
-| API | GraphQL APIs per service, federated behind an API Gateway |
-| Communication | gRPC for internal service-to-service calls |
-| Data | PostgreSQL (one database per service), Redis caching |
-| Messaging | Kafka event streaming for async workflows |
-| Security | Spring Security + JWT, Role-Based Access Control (RBAC) |
-| Core Domain | Multi-warehouse inventory allocation, inventory reservation, shipment tracking |
-| Ops | Docker & Docker Compose, Kubernetes manifests, Prometheus + Actuator, structured logging |
+| Database per service | Every service owns its schema exclusively — no shared tables, no cross-service joins |
+| Sync where correctness matters | Order to Inventory/Pricing use gRPC for immediate, strongly-consistent responses |
+| Async where coupling should be loose | Order to Notification/Shipment happen via Kafka so producers never block on consumers |
+| Cache what's read far more than it's written | Product catalog & inventory snapshots sit in Redis, invalidated on write |
+| Stateless services | JWT carries identity/role; any service instance can serve any request |
 
 ---
 
-## System Architecture
+## Tech Stack
 
-```
-                                   ┌────────────────────────┐
-                                   │      Client Apps         │
-                                   │   (Postman / GraphQL)    │
-                                   └────────────┬─────────────┘
-                                                │  JWT Token
-                                                ▼
-                                   ┌────────────────────────┐
-                     ┌────────────▶│      API Gateway         │◀───────────┐
-                     │             │         :8080             │            │
-                     │             └────────────┬─────────────┘            │
-                     │                          │                          │
-              register/discover                 │                   register/discover
-                     │                          ▼                          │
-                     │             ┌────────────────────────┐             │
-                     └─────────────│   Service Registry        │─────────────┘
-                                   │   (Eureka) :8761          │
-                                   └────────────────────────────┘
-
-        ┌───────────────┬────────────────┬───────────────┬────────────────┐
-        ▼               ▼                ▼               ▼                ▼
- ┌─────────────┐ ┌─────────────┐  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐
- │   Product   │ │    User     │  │    Cart     │ │    Order    │ │    Shipment      │
- │  Service    │ │  Service    │  │  Service    │ │  Service    │ │    Service       │
- │   :8081     │ │   :8083     │  │   :8085     │ │   :8086     │ │     :8087        │
- └──────┬──────┘ └──────┬──────┘  └──────┬──────┘ └──────┬──────┘ └────────┬─────────┘
-        │               │                │               │  gRPC          │
-        │               │                │               ├────────┬───────┘
-        │               │                │               ▼        ▼
-        │               │                │        ┌─────────────┐ ┌─────────────┐
-        │               │                │        │  Inventory  │ │   Pricing   │
-        │               │                │        │  Service    │ │   Service   │
-        │               │                │        │   :8082     │ │   :8084     │
-        │               │                │        └──────┬──────┘ └──────┬──────┘
-        │               │                │               │               │
-        ▼               ▼                ▼                ▼               ▼
- ┌─────────────────────────────────────────────────────────────────────────────┐
- │                              PostgreSQL (per-service DB)                       │
- └─────────────────────────────────────────────────────────────────────────────┘
-
-        Product Service ──┐
-        Inventory Service ┴──▶  ⚡ Redis Cache  (catalog + inventory snapshots)
-
-        Order Service ─────┐
-        Inventory Service ─┼──▶  📬 Kafka Topics  ──▶  Notification Service (:8088) ──▶ Email / Future SMS
-        Shipment Service ──┘                      └──▶  Shipment Service (order-created)
-```
+| Layer | Technology | Why |
+|---|---|---|
+| Language | Java 21 | Records, virtual threads, pattern matching |
+| Framework | Spring Boot 4.1 | Mature ecosystem, production-ready defaults |
+| API Layer | GraphQL | Clients fetch exactly the fields they need across nested domain objects |
+| Internal RPC | gRPC | Low-latency, strongly-typed contracts between Order and Inventory/Pricing |
+| Database | PostgreSQL | ACID transactions for inventory reservation correctness |
+| Cache | Redis | Sub-millisecond reads for catalog & inventory snapshots |
+| Messaging | Kafka | Durable, replayable event log decoupling producers/consumers |
+| Security | Spring Security + JWT | Stateless auth, RBAC enforced at the gateway |
+| Discovery | Eureka | Dynamic service registration, no hardcoded hosts |
+| Monitoring | Prometheus + Actuator | Metrics scraping, health probes for Kubernetes |
+| Containers | Docker / Docker Compose | Local parity with production |
+| Orchestration | Kubernetes | Deployment, Service, ConfigMap, Secret per service |
 
 ---
 
-## High-Level Request Flow
+## Microservices
 
-```
-Client
-  │
-  ▼
-API Gateway  ──(JWT validated)──▶  GraphQL Layer
-  │
-  ├──▶ Product Service
-  ├──▶ Cart Service
-  ├──▶ Order Service
-  └──▶ Shipment Service
-              │
-              ▼
-        PostgreSQL ──▶ Redis Cache ──▶ Kafka ──▶ Notification Service
-```
-
-**Internal (synchronous) communication:**
-
-```
-Order Service ──gRPC──▶ Inventory Service   (CheckInventory)
-Order Service ──gRPC──▶ Pricing Service     (GetPriceByProductId)
-```
-
----
-
-## Microservices & Ports
-
-| # | Service | Port | Responsibility |
+| Service | Port | Database | Responsibility |
 |---|---|---|---|
-| 1 | Service Registry | 8761 | Eureka service discovery |
-| 2 | API Gateway | 8080 | Entry point, routing, JWT authentication |
-| 3 | Product Service | 8081 | Product catalog CRUD & search |
-| 4 | Inventory Service | 8082 | Warehouse & inventory management, reservation |
-| 5 | User Service | 8083 | Registration, login, roles |
-| 6 | Pricing Service | 8084 | Price, discount & tax calculation |
-| 7 | Cart Service | 8085 | Shopping cart management |
-| 8 | Order Service | 8086 | Order orchestration & lifecycle |
-| 9 | Shipment Service | 8087 | Shipment creation, allocation, tracking |
-| 10 | Notification Service | 8088 | Kafka event consumption, notifications |
+| API Gateway | 8080 | – | Routing, JWT validation, rate limiting |
+| Product Service | 8081 | `product_db` | Product catalog CRUD & search |
+| Inventory Service | 8082 | `inventory_db` | Warehouse inventory, reservation, multi-warehouse allocation |
+| User Service | 8083 | `user_db` | Registration, login, role management |
+| Pricing Service | 8084 | `pricing_db` | Base price, discount, tax, final price |
+| Cart Service | 8085 | `cart_db` | Add/remove/update cart items |
+| Order Service | 8086 | `order_db` | Order orchestration, the system's core coordinator |
+| Shipment Service | 8087 | `shipment_db` | Shipment creation, warehouse allocation, tracking |
+| Notification Service | 8088 | `notification_db` | Kafka consumer, email/SMS dispatch |
+| Payment Service | 8089 | `payment_db` | Payment processing — planned, not yet implemented |
+| Service Registry | 8761 | – | Eureka service discovery |
 
 ---
 
 ## Roles & Permissions
 
-| Role | Permissions |
+| Role | Can do |
 |---|---|
-| **CUSTOMER** | Register · Login · Browse Products · Add/Update/Remove Cart Items · Place Order · Cancel Order · View Orders · Track Shipment |
-| **WAREHOUSE_MANAGER** | View Inventory · Add Inventory · Update Inventory · Process Orders · Update Shipment Status |
-| **ADMIN** | Manage Products · Manage Warehouses · Manage Users · Assign Warehouse Managers · View Inventory · View Orders |
+| CUSTOMER | Register · Login · Browse products · Manage cart · Place/cancel orders · View orders · Track shipments |
+| WAREHOUSE_MANAGER | View/add/update inventory · Process assigned orders · Update shipment status |
+| ADMIN | Manage products, warehouses, users · Assign warehouse managers · View all orders & inventory system-wide |
 
-**Shipment Status Lifecycle** (managed by Warehouse Manager):
+**Shipment status lifecycle** (advanced by Warehouse Manager):
 
 ```
-ALLOCATED  ─▶  PACKED  ─▶  SHIPPED  ─▶  IN_TRANSIT  ─▶  DELIVERED
-```
-
----
-
-## Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Java 21+ |
-| Framework | Spring Boot 4.1 |
-| API Layer | GraphQL |
-| Internal Communication | gRPC |
-| Database | PostgreSQL |
-| Caching | Redis |
-| Messaging | Kafka |
-| Security | Spring Security + JWT |
-| Service Discovery | Eureka |
-| Containerization | Docker |
-| Orchestration | Kubernetes |
-| Monitoring | Prometheus + Spring Boot Actuator |
-
----
-
-## Service Responsibilities
-
-| Service | Key Responsibilities |
-|---|---|
-| Product Service | Product CRUD · Product search · GraphQL APIs · Redis cache |
-| User Service | Registration · Login · JWT issuance · Role management · Warehouse manager approval |
-| Inventory Service | Warehouse management · Inventory management · Reservation/release · Multi-warehouse allocation |
-| Pricing Service | Product pricing · Discount calculation · Tax calculation |
-| Cart Service | Add/remove product · Update quantity · View cart |
-| Order Service | Create/cancel order · Reserve inventory · Calculate price · Publish Kafka events |
-| Shipment Service | Shipment creation · Warehouse allocation · Tracking · Status updates |
-| Notification Service | Consume Kafka events · Email notifications · Future SMS support |
-
----
-
-## Database Design
-
-Each microservice owns its own PostgreSQL database (database-per-service pattern):
-
-| Domain | Tables |
-|---|---|
-| Users | `users` |
-| Catalog | `products`, `pricing` |
-| Inventory | `warehouses`, `inventory`, `inventory_reservations` |
-| Cart | `carts`, `cart_items` |
-| Orders | `orders`, `order_items` |
-| Shipments | `shipments`, `shipment_tracking` |
-
----
-
-## Complete Order Flow
-
-```
- 1. Customer logs in                          → JWT token generated
- 2. Customer browses products                 → Product Service (Redis cache-first, PostgreSQL on miss)
- 3. Customer adds items to cart                → Cart Service
- 4. Customer places order                      → Order Service
- 5. Order Service reserves inventory           → gRPC → Inventory Service
- 6. Order Service calculates final price       → gRPC → Pricing Service
- 7. Order created, status = CONFIRMED          → PostgreSQL transaction commit
- 8. Order Service publishes "order-created"    → Kafka
- 9. Notification Service consumes event        → Sends confirmation email
-10. Shipment Service consumes event            → Creates shipment, allocates warehouse(s),
-                                                   generates tracking number (e.g. TRK-ABC123)
-11. Warehouse Manager updates shipment status  → ALLOCATED → PACKED → SHIPPED → IN_TRANSIT → DELIVERED
-12. Customer tracks shipment                   → GraphQL query returns tracking details
-13. (Optional) Customer cancels order          → Status = CANCELLED, Inventory Service releases
-                                                   reservation, "order-cancelled" event published
+ALLOCATED -> PACKED -> SHIPPED -> IN_TRANSIT -> DELIVERED
 ```
 
 ---
 
-## Authentication & Authorization
+## Multi-Warehouse Allocation Logic
 
-- **Spring Security** + **JWT** for stateless authentication
-- **Role-Based Access Control (RBAC)** with three roles: `CUSTOMER`, `WAREHOUSE_MANAGER`, `ADMIN`
-- API Gateway validates the JWT before routing requests downstream
+The core problem this project solves: an order can exceed what any single warehouse holds, so the Inventory Service splits it.
+
+**Example**
+
+| Warehouse | Stock Available |
+|---|---|
+| Warehouse A | 20 units |
+| Warehouse B | 30 units |
+| Warehouse C | 50 units |
+
+An order for **60 units** resolves to:
+
+```
+Warehouse A -> 20 units
+Warehouse B -> 30 units
+Warehouse C -> 10 units
+------------------------
+Total          60 units
+```
+
+**Allocation priority:** nearest warehouse → lowest shipping cost → available inventory required → split across warehouses only if no single warehouse can fulfill the order.
+
+**Reservation state machine:**
+
+```
+Order Created    ->  available_qty down,  reserved_qty up
+Order Cancelled  ->  reserved_qty down,   available_qty up
+```
+
+This prevents overselling: `available_qty` is decremented at reservation time, not at shipment time.
 
 ---
 
-## GraphQL APIs
+## Order Processing Sequence
 
-| Service | Queries | Mutations |
+```
+1.  Customer logs in                        -> User Service issues JWT
+2.  Customer browses products                -> Product Service (Redis cache-first)
+3.  Customer adds items to cart              -> Cart Service
+4.  Customer places order                    -> Order Service
+5.  Order Service reserves inventory         -> gRPC call to Inventory Service
+6.  Order Service calculates final price     -> gRPC call to Pricing Service
+7.  Order persisted, status = CONFIRMED      -> order_db (transactional write)
+8.  Order Service publishes "order-created"  -> Kafka
+9.  Notification Service consumes event      -> Sends confirmation email
+10. Shipment Service consumes event          -> Allocates warehouse(s), generates tracking number
+11. Warehouse Manager updates shipment       -> ALLOCATED -> PACKED -> SHIPPED -> IN_TRANSIT -> DELIVERED
+12. Customer tracks shipment                 -> GraphQL query returns tracking details
+13. (Optional) Order cancelled               -> Inventory released, "order-cancelled" published
+```
+
+---
+
+## Redis Strategy
+
+```
+Client -> Product Service -> Redis Cache
+                                 |
+                     -----------------------
+                     |                     |
+                    HIT                  MISS
+                     |                     |
+              Return cached           PostgreSQL
+                response                    |
+                                             v
+                                   Write-through to Redis
+                                             |
+                                             v
+                                     Return response
+```
+
+| Purpose | Key Pattern | TTL |
 |---|---|---|
-| Product | `products`, `productById`, `productBySku` | `createProduct`, `updateProduct`, `deleteProduct` |
-| Cart | `getCart` | `addToCart`, `updateCart`, `removeFromCart`, `clearCart` |
-| Order | `orders`, `orderById`, `ordersByUser` | `placeOrder`, `cancelOrder` |
-| Inventory | `warehouses`, `inventoryById`, `inventoryByProduct` | `createWarehouse`, `createInventory`, `updateInventory`, `deleteInventory` |
+| Product catalog | `product::{productId}` | 10 min |
+| Inventory snapshot | `inventory::{productId}` | 30 sec (short — stock changes fast) |
+
+Invalidation happens on `updateProduct` / `deleteProduct` and on every inventory reservation/release.
 
 ---
 
-## gRPC Communication
+## Kafka Topics
 
-| Caller | Callee | RPC Method |
+| Topic | Producer | Consumer(s) | Purpose |
+|---|---|---|---|
+| `order-created` | Order Service | Notification, Shipment | Trigger shipment creation + confirmation email |
+| `order-cancelled` | Order Service | Notification, Inventory | Release reservation, notify customer |
+| `inventory-reserved` | Inventory Service | Notification | Audit trail / customer alert |
+| `inventory-released` | Inventory Service | Notification | Audit trail / customer alert |
+| `shipment-created` | Shipment Service | Notification | Tracking number email |
+| `shipment-delivered` | Shipment Service | Notification | Delivery confirmation |
+
+All consumers are idempotent (dedup by event ID) with retry + dead-letter-queue handling for poison messages.
+
+---
+
+## gRPC Contracts
+
+```protobuf
+// Inventory Service
+service InventoryService {
+  rpc CheckInventory(InventoryRequest) returns (InventoryListResponse);
+}
+
+// Pricing Service
+service PricingService {
+  rpc GetPriceByProductId(PriceRequest) returns (PriceResponse);
+}
+```
+
+| Caller | Callee | RPC |
 |---|---|---|
 | Order Service | Inventory Service | `CheckInventory` |
 | Order Service | Pricing Service | `GetPriceByProductId` |
 
 ---
 
-## Kafka Topics
+## JWT & Security
 
-| Topic | Producer | Consumer(s) |
+```
+Client -> User Service -> JWT Issued (userId + role, signed)
+                                |
+                                v
+                    API Gateway validates
+                    signature + expiry + role
+                                |
+                                v
+                Forwarded to downstream service
+```
+
+- Stateless auth — no server-side session store
+- RBAC enforced centrally at the Gateway, re-checked per-service for defense in depth
+- Roles: `CUSTOMER`, `WAREHOUSE_MANAGER`, `ADMIN`
+
+---
+
+## Database Design
+
+Database-per-service — no service ever queries another service's tables directly.
+
+| Database | Owner | Core Tables |
 |---|---|---|
-| `order-created` | Order Service | Notification Service, Shipment Service |
-| `order-cancelled` | Order Service | Notification Service, Inventory Service |
-| `inventory-reserved` | Inventory Service | Notification Service |
-| `inventory-released` | Inventory Service | Notification Service |
-| `shipment-created` | Shipment Service | Notification Service |
-| `shipment-delivered` | Shipment Service | Notification Service |
+| `user_db` | User Service | `users` |
+| `product_db` | Product Service | `products` |
+| `inventory_db` | Inventory Service | `warehouses`, `inventory`, `inventory_reservations` |
+| `pricing_db` | Pricing Service | `pricing` |
+| `cart_db` | Cart Service | `carts`, `cart_items` |
+| `order_db` | Order Service | `orders`, `order_items` |
+| `shipment_db` | Shipment Service | `shipments`, `shipment_tracking` |
+| `notification_db` | Notification Service | `notifications` |
+| `payment_db` | Payment Service (planned) | `payments`, `payment_transactions` |
+
+Order Service uses row-level locking (`SELECT ... FOR UPDATE`) during inventory reservation to prevent race conditions under concurrent order placement.
 
 ---
 
-## Redis Cache
+## GraphQL Examples
 
-| Purpose | Key Pattern | Example |
-|---|---|---|
-| Product Catalog | `product::{productId}` | `product::1024` |
-| Inventory Snapshot | `inventory::{productId}` | `inventory::1024` |
+**Product Service — create a product**
 
----
+```graphql
+mutation {
+  createProduct(product: {
+    productSku: "SKU-1001"
+    productName: "Wireless Mouse"
+    productCategory: "Electronics"
+    productPrice: 799.0
+  }) {
+    productId
+    productName
+  }
+}
+```
 
-## Monitoring & Observability
+**Cart Service — add an item**
 
-| Endpoint | Purpose |
-|---|---|
-| `/actuator/health` | Service health check |
-| `/actuator/prometheus` | Prometheus metrics scrape endpoint |
+```graphql
+mutation {
+  addToCart(request: { userId: 12, productId: 45, quantity: 2 }) {
+    cartId
+    cartItems { productId quantity }
+  }
+}
+```
 
-Structured logging and Prometheus metrics are enabled across all services.
+**Order Service — place & query an order**
 
----
+```graphql
+mutation {
+  placeOrder(request: { userId: 12 }) {
+    orderId
+    orderStatus
+    totalAmount
+  }
+}
 
-## Docker
+query {
+  ordersByUser(userId: 12) {
+    orderId
+    orderStatus
+    orderItems { productId quantity price }
+  }
+}
+```
 
-Each service ships its own `Dockerfile`. Start the full stack with:
+**Inventory Service — check stock across warehouses**
 
-```bash
-docker-compose up --build
+```graphql
+query {
+  inventoryByProduct(productId: 45) {
+    warehouseName
+    availableQyt
+    reservedQyt
+  }
+}
 ```
 
 ---
 
-## Kubernetes
-
-Each service includes:
-
-| Manifest | Purpose |
-|---|---|
-| `Deployment` | Pod spec & replica management |
-| `Service` | Internal networking |
-| `ConfigMap` | Non-secret configuration |
-| `Secret` | Credentials & sensitive config |
-
----
-
-## Project Structure
+## Folder Structure
 
 ```
 Multi-Warehouse-Order-Fulfillment-System/
-│
 ├── api-gateway/
 ├── service-registry/
 ├── user-service/
@@ -338,38 +389,56 @@ Multi-Warehouse-Order-Fulfillment-System/
 ├── order-service/
 ├── shipment-service/
 ├── notification-service/
-│
+├── payment-service/          # planned
 ├── docker/
 ├── kubernetes/
+│   ├── deployments/
+│   ├── services/
+│   ├── configmaps/
+│   └── secrets/
 ├── monitoring/
+│   ├── prometheus/
+│   └── grafana/
 ├── docker-compose.yml
+├── LICENSE
 └── README.md
 ```
 
 ---
 
-## Running the Project
+## Getting Started
 
-**1. Clone the repository**
+**Prerequisites**
+
+| Tool | Version |
+|---|---|
+| Java | 21+ |
+| Maven | 3.9+ |
+| Docker & Docker Compose | Latest |
+| PostgreSQL client (optional) | For manual DB inspection |
+
+**1. Clone & build**
 
 ```bash
 git clone <repository-url>
 cd Multi-Warehouse-Order-Fulfillment-System
-```
-
-**2. Build**
-
-```bash
 mvn clean install
 ```
 
-**3. Run with Docker**
+**2. Start infrastructure + services**
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
-**4. Access the services**
+**3. Verify services are up**
+
+```bash
+curl http://localhost:8761
+curl http://localhost:8080/actuator/health
+```
+
+**4. Service endpoints**
 
 | Service | URL |
 |---|---|
@@ -384,39 +453,96 @@ docker-compose up --build
 
 ---
 
-## Future Enhancements
+## Kubernetes Deployment
 
-| Feature | Status |
-|---|---|
-| Payment Integration | Planned |
-| SMS Notifications | Planned |
-| Elasticsearch | Planned |
-| Distributed Tracing | Planned |
-| Saga Pattern | Planned |
-| CI/CD Pipeline | Planned |
-| OpenTelemetry | Planned |
-| Grafana Dashboards | Planned |
+```bash
+kubectl create namespace fulfillment
+kubectl apply -f kubernetes/configmaps/ -n fulfillment
+kubectl apply -f kubernetes/secrets/ -n fulfillment
+kubectl apply -f kubernetes/deployments/ -n fulfillment
+kubectl apply -f kubernetes/services/ -n fulfillment
+
+kubectl get pods -n fulfillment
+kubectl rollout status deployment/order-service -n fulfillment
+```
+
+Each service ships a `Deployment`, `Service`, `ConfigMap`, and `Secret` manifest.
 
 ---
 
-## Project Highlights
+## Observability
 
-- Production-inspired microservices architecture
-- GraphQL API layer with per-service schemas
-- gRPC for internal synchronous communication
-- Kafka-based event-driven design
-- Redis caching for hot-path reads
-- JWT authentication with RBAC
-- Multi-warehouse inventory allocation logic
-- End-to-end shipment tracking
-- Docker & Kubernetes-ready deployment
+| Endpoint | Purpose |
+|---|---|
+| `/actuator/health` | Liveness/readiness probes for Kubernetes |
+| `/actuator/prometheus` | Metrics scrape target |
+| Structured JSON logs | Correlation IDs propagated across service calls |
+
+---
+
+## Features
+
+**Platform**
+
+- GraphQL APIs across all services
+- Eureka-based service discovery
+- Centralized JWT validation at the gateway
+- Database-per-service isolation
+- Redis caching for catalog & inventory
+- Kafka event streaming
+- gRPC internal communication
+- Role-based access control
+- Multi-warehouse order splitting
+
+**Operations**
+
+- Inventory reservation & release
+- Overselling prevention
+- Shipment tracking with status history
+- Auto-generated tracking numbers
+- Email notifications (SMS-ready)
+- Docker & Docker Compose
+- Full Kubernetes manifest set
 - Prometheus + Actuator monitoring
+- Idempotent Kafka consumers + DLQ strategy
+
+---
+
+## Roadmap
+
+| Feature | Status |
+|---|---|
+| Payment Service integration | Planned |
+| SMS notifications | Planned |
+| Elasticsearch-based product search | Planned |
+| Distributed tracing (Zipkin/Jaeger) | Planned |
+| Saga pattern for cross-service transactions | Planned |
+| CI/CD pipeline (GitHub Actions) | Planned |
+| OpenTelemetry instrumentation | Planned |
+| Grafana dashboards | Planned |
+| Return & refund management | Planned |
+
+---
+
+## Resume Highlights
+
+- Designed and built a production-inspired microservices platform across 10+ independently deployable Spring Boot services using GraphQL, gRPC, Kafka, Redis, and PostgreSQL.
+- Implemented multi-warehouse inventory allocation logic that splits order quantities across warehouses while preventing overselling through reservation-based concurrency control.
+- Built an event-driven notification pipeline with idempotent Kafka consumers, decoupling order, inventory, and shipment workflows from downstream notification handling.
+- Designed GraphQL schemas for product, cart, order, and inventory domains alongside gRPC contracts for low-latency Order to Inventory/Pricing communication.
+- Secured all APIs with JWT authentication and role-based access control enforced at the API Gateway layer.
+- Containerized all services with Docker and authored complete Kubernetes manifest sets (Deployment, Service, ConfigMap, Secret) for production-style deployment.
+- Instrumented every service with Spring Boot Actuator and Prometheus for health checks and metrics collection.
 
 ---
 
 ## Author
 
 **Pranjal Tiwari**
-Backend Developer
+Backend Developer · Java · Spring Boot · GraphQL · gRPC · PostgreSQL · Redis · Kafka · Docker · Kubernetes
 
-Java · Spring Boot · GraphQL · gRPC · PostgreSQL · Redis · Kafka · Docker · Kubernetes
+| | |
+|---|---|
+| GitHub | `github.com/pranjal3014` |
+| LinkedIn | `linkedin.com/in/pranjal-tiwari-it` |
+| Email | `pranjaltiwari7188@gmail.com` |
